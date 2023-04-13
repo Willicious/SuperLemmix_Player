@@ -1,9 +1,9 @@
 SuperLemmix
 
-by WillLem
-based on by Namida Verasche and Stephan Neupert,
-based on Lemmix by Eric Langedijk,
-inspired by Lemmings by DMA.
+by William James
+based on NeoLemmix by Namida Verasche and Stephan Neupert,
+itself based on Lemmix by Eric Langedijk,
+inspired by Lemmings by DMA Design.
 
 The main branch is "new-master", which gives users access to most data files 
 allowing them to easily mod their copy of the game.
@@ -36,6 +36,3 @@ Further comments:
 - All external files needed to run SuperLemmix.exe are contained in "data/external".
   Some of the files (like the ones in "styles") are optional and only required for playing
   certain levels.
-
-
-
