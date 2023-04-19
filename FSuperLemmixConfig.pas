@@ -58,6 +58,7 @@ type
     btnResetWindow: TButton;
     rgExitSound: TRadioGroup;
     cbShowMinimap: TCheckBox;
+    cbReplayAfterRestart: TCheckBox;
     procedure btnApplyClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnHotkeysClick(Sender: TObject);
@@ -255,6 +256,7 @@ begin
     // Checkboxes
     cbPauseAfterBackwards.Checked := GameParams.PauseAfterBackwardsSkip;
     cbNoAutoReplay.Checked := not GameParams.NoAutoReplayMode;
+    cbReplayAfterRestart.Checked := GameParams.ReplayAfterRestart;
     cbNoBackgrounds.Checked := GameParams.NoBackgrounds;
     //cbForceDefaultLemmings.Checked := GameParams.ForceDefaultLemmings;
     cbClassicMode.Checked := GameParams.ClassicMode;
@@ -324,6 +326,7 @@ begin
   // Checkboxes
   GameParams.PauseAfterBackwardsSkip := cbPauseAfterBackwards.Checked;
   GameParams.NoAutoReplayMode := not cbNoAutoReplay.Checked;
+  GameParams.ReplayAfterRestart := cbReplayAfterRestart.Checked;
 
   GameParams.NoBackgrounds := cbNoBackgrounds.Checked;
   //GameParams.ForceDefaultLemmings := cbForceDefaultLemmings.Checked;
@@ -457,7 +460,7 @@ end;
 
 procedure TFormNXConfig.cbShowMinimapClick(Sender: TObject);
 begin
-  if not fIsSetting then   //bookmark - this needs to be in the ClassicMode stuff as well
+  if not fIsSetting then
   begin
     if cbShowMinimap.Checked then
     begin
@@ -528,7 +531,7 @@ begin
   cbHideSkillQ.Enabled := true;
 end;
 
-procedure TFormNXConfig.SetCheckboxes;    //bookmark - might not need this
+procedure TFormNXConfig.SetCheckboxes;
   begin
     if GameParams.ClassicMode then
       begin

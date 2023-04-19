@@ -194,6 +194,7 @@ type
     fGameCheated               : Boolean;
     NextLemmingCountDown       : Integer;
     fFastForward               : Boolean;
+    fSuperLemming              : Boolean;
     fTargetIteration           : Integer; // this is used in hyperspeed
     fHyperSpeedCounter         : Integer; // no screenoutput
     fHyperSpeed                : Boolean; // we are at hyperspeed no targetbitmap output
@@ -1129,6 +1130,7 @@ begin
   fPauseOnHyperSpeedExit := False;
 
   fFastForward := False;
+  fSuperLemming := Level.Info.SuperLemming;
 
   fGameFinished := False;
   fGameCheated := False;
@@ -6201,9 +6203,11 @@ begin
     currSpawnInterval := aSI;
 
   CueSoundEffect(SFX_CHANGE_RR);
-  //bookmark - placeholder for (SFX_ASSIGN_SKILL or new CHANGE_RR sound)
-  //this cues the sound effect with each number change. We now need
-  //bass_fx.dll to change the pitch
+  //if aSI > currSpawnInterval then SoundManager.AdjustPitch := + 1;
+  //if aSI < currSpawnInterval then SoundManager.AdjustPitch := - 1;
+  //or, if you can't set it up in sound manager then put the pitch
+  //shifting code directly in this block
+  //this is where the pitch-shifting code needs to go //bookmark
 end;
 
 
