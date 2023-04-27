@@ -677,6 +677,8 @@ begin
     fTalismans.Free;
   if fHasOwnScrollerList and (fScrollerList <> nil) then
     fScrollerList.Free;
+  if fHasOwnPostviewTexts then
+    fPostViewTexts.Free;
   inherited;
 end;
 
@@ -935,8 +937,8 @@ var
     else
       Result := Result + '0';
 
-    if Level.Info.SuperLemming then
-      Result := Result + Level.Info.SuperLemming;
+//    if Level.Info.SuperLemming then
+//      Result := Result + Level.Info.SuperLemming;
   end;
 
   function SkillsetString: String;

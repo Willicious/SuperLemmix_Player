@@ -26,6 +26,7 @@ type
     fScreenIsClosing     : Boolean;
     fCloseDelay          : Integer;
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
+    procedure FadeIn;
   protected
     procedure CloseScreen(aNextScreen: TGameScreenType); virtual;
     property ScreenIsClosing: Boolean read fScreenIsClosing;
@@ -94,6 +95,7 @@ end;
 constructor TGameBaseScreen.Create(aOwner: TComponent);
 begin
   inherited Create(aOwner);
+
   fScreenImg := TImage32.Create(Self);
   fScreenImg.Parent := Self;
 
@@ -103,6 +105,11 @@ end;
 destructor TGameBaseScreen.Destroy;
 begin
   inherited Destroy;
+end;
+
+procedure TGameBaseScreen.FadeIn;
+begin
+  //fadein code here
 end;
 
 procedure TGameBaseScreen.FadeOut;
@@ -115,7 +122,7 @@ var
   RGBDiff: Integer;
 const
   TOTAL_STEPS = 32;
-  STEP_DELAY = 6;
+  STEP_DELAY = 12;
 begin
   Steps := 0;
   StartTickCount := GetTickCount;

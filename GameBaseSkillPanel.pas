@@ -1085,11 +1085,21 @@ if GameParams.ShowMinimap then
 end;
 
 procedure TBaseSkillPanel.DrawButtonSelector(aButton: TSkillPanelButton; Highlight: Boolean);
+var
+  ButtonPos: Integer;
+  MagicFrequency: Single;
 begin
   if fGameWindow.IsHyperSpeed then Exit;
   if aButton = spbNone then Exit;
   if (aButton <= LAST_SKILL_BUTTON) then
   begin
+    ButtonPos := Game.GetSelectedSkill + 1;
+
+                   //pitch             //this makes sure the interval is 1 semitone
+    MagicFrequency := 6900 * (IntPower(1.06, ButtonPos));
+                   //matches Amiga - lower might be better for levels with more skills?
+    if (fLastHighlitSkill <> spbNone) and (fLastHighlitSkill <> fHighlitSkill) then
+    SoundManager.PlaySound(SFX_SKILLBUTTON, 0, MagicFrequency);
     if (fHighlitSkill = aButton) and Highlight then Exit;
     if (fHighlitSkill = spbNone) and not Highlight then Exit;
   end;
@@ -1097,7 +1107,7 @@ begin
 
   RemoveHighlight(aButton);
   if Highlight then
-  DrawHighlight(aButton);
+    DrawHighlight(aButton);
 end;
 
 procedure TBaseSkillPanel.DrawHighlight(aButton: TSkillPanelButton);
@@ -1108,8 +1118,6 @@ begin
   begin
     BorderRect := fButtonRects[aButton];
     fHighlitSkill := aButton;
-    if (fLastHighlitSkill <> spbNone) and (fLastHighlitSkill <> fHighlitSkill) then
-    SoundManager.PlaySound(SFX_SKILLBUTTON);
   end else
   BorderRect := fButtonRects[aButton];
 

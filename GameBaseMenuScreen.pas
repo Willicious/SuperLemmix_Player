@@ -28,10 +28,10 @@ const
   //FS = FullScreen - we need different menu size for FullScreen mode
   FS_INTERNAL_SCREEN_WIDTH = 874;
 
-  FOOTER_OPTIONS_ONE_ROW_Y = 462;
+  FOOTER_OPTIONS_ONE_ROW_Y = 460;
 
-  FOOTER_OPTIONS_TWO_ROWS_HIGH_Y = 443;
-  FOOTER_OPTIONS_TWO_ROWS_LOW_Y = 468;
+  FOOTER_OPTIONS_TWO_ROWS_HIGH_Y = 440;
+  FOOTER_OPTIONS_TWO_ROWS_LOW_Y = 460;
 
   MM_FOOTER_ONE_OPTION_X = MM_INTERNAL_SCREEN_WIDTH div 2; //hotbookmark
   FS_FOOTER_ONE_OPTION_X = FS_INTERNAL_SCREEN_WIDTH div 2; //hotbookmark
@@ -42,7 +42,7 @@ const
   FOOTER_TWO_OPTIONS_X_LEFT = INTERNAL_SCREEN_WIDTH * 5 div 16;
 
   MM_FOOTER_TWO_OPTIONS_X_RIGHT = MM_INTERNAL_SCREEN_WIDTH * 11 div 16; //hotbookmark
-  FS_FOOTER_TWO_OPTIONS_X_RIGHT = MM_INTERNAL_SCREEN_WIDTH * 11 div 16; //hotbookmark
+  FS_FOOTER_TWO_OPTIONS_X_RIGHT = FS_INTERNAL_SCREEN_WIDTH * 11 div 16; //hotbookmark
   FOOTER_TWO_OPTIONS_X_RIGHT = INTERNAL_SCREEN_WIDTH * 11 div 16;
 
   MM_FOOTER_THREE_OPTIONS_X_LEFT = MM_INTERNAL_SCREEN_WIDTH * 3 div 16; //hotbookmark
@@ -104,7 +104,7 @@ type
 
       fBasicCursor: TNLCursor;
 
-      fClickableRegions: TObjectList<TClickableRegion>;
+
 
       procedure LoadBasicCursor;
       procedure SetBasicCursor;
@@ -128,6 +128,7 @@ type
       procedure SaveScreenImage;
       {$endif}{$endif}
     protected
+      fClickableRegions: TObjectList<TClickableRegion>;
       procedure CloseScreen(aNextScreen: TGameScreenType); override;
 
       procedure DoLevelSelect;
@@ -441,8 +442,8 @@ end;
 function TGameBaseMenuScreen.MakeClickableText(aTextCenter: TPoint;
   aText: String; aAction: TRegionAction): TClickableRegion;
 const
-  HUE_SHIFT_NORMAL = 0.610; //0.250 for blue
-  HUE_SHIFT_HOVER = 0.150; //0.150 for teal
+  HUE_SHIFT_NORMAL = 0.250;
+  HUE_SHIFT_HOVER = 0;
   VALUE_SHIFT_CLICK = -0.250;
 var
   tmpNormal, tmpHover, tmpClick: TBitmap32;
@@ -964,12 +965,14 @@ begin
 
   if GameParams.FullScreen <> OldFullScreen then
   begin
-    CloseScreen(gstMenu); //hotbookmark - we need to re-draw the menu here
+     InitializeImage;
+     BuildScreen;
   end;
 
   if GameParams.ShowMinimap <> OldShowMinimap then
   begin
-    CloseScreen(gstMenu); //hotbookmark - we need to re-draw the menu here
+     InitializeImage;
+     BuildScreen;
   end;
 
   if GameParams.HighResolution <> OldHighResolution then

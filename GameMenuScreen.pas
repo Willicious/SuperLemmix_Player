@@ -325,6 +325,7 @@ var
 begin
   BMP := TBitmap32.Create;
   try
+    fClickableRegions.Clear;
     // Play
     GetGraphic('sign_play.png', BMP);
     NewRegion := MakeClickableImageAuto(MakePosition(-1, -0.5), BMP.BoundsRect, BeginGame, BMP);
@@ -612,16 +613,16 @@ begin
   end;
 
   SizeRect := MenuFont.GetTextSize(S);
-  ScrollerText.SetSize(SizeRect.Width, SizeRect.Height + 4);
+  ScrollerText.SetSize(SizeRect.Width, SizeRect.Height + 5);
   ScrollerText.Clear(0);
   ScrollerText.DrawMode := dmBlend;
-  MenuFont.DrawText(ScrollerText, S, 0, 4);
+  MenuFont.DrawText(ScrollerText, S, 0, 5);
 
   for y := 0 to ScrollerText.Height-1 do
   for x := 0 to ScrollerText.Width-1 do
        begin
           ScrollerText[x, y] := ApplyColorShift(ScrollerText[x, y], HueShift);
-        end;
+       end;
 
   if (fReelForceDirection < 0) then
     fReelTextPos := -ScrollerText.Width

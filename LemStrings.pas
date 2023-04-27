@@ -63,7 +63,6 @@ const
   SFX_FIXING = 'wrench';
   SFX_ZOMBIE = 'zombie';
   SFX_TIMEUP = 'timeup';
-  SFX_CHANGE_RR = 'boop';
 
 resourcestring
   SProgramName = 'SuperLemmix Player';
@@ -78,7 +77,7 @@ resourcestring
   SPreviewSave = ' To Be Saved';
   SPreviewReleaseRate = 'Release Rate ';
   SPreviewSpawnInterval = 'Spawn Interval ';
-  SPreviewRRLocked = '  (Locked)';
+  SPreviewRRLocked = ' (Locked)';
   SPreviewTimeLimit = 'Time Limit ';
   SPreviewGroup = 'Group: ';
   SPreviewAuthor = 'Author: ';
