@@ -337,6 +337,7 @@ begin
   Get('electric');
   Get('explode');
   Get('fire');
+  Get('ice');
   Get('glug');
   Get('letsgo');
   Get('mousepre');
@@ -356,6 +357,7 @@ begin
   Get('wrench');
   Get('yippee');
   Get('zombie');
+  Get('zombiedie');
 end;
 
 function TSoundManager.FindSoundIndex(aName: String): Integer;

@@ -100,6 +100,7 @@ type
 
 const
   DEF_MISCOPTIONS = [
+    moCheckUpdates,
     moAutoReplaySave,
     moPauseAfterBackwards,
     moLinearResampleMenu,
@@ -290,7 +291,6 @@ type
     property AutoSaveReplayPattern: String read fAutoSaveReplayPattern write fAutoSaveReplayPattern;
     property IngameSaveReplayPattern: String read fIngameSaveReplayPattern write fIngameSaveReplayPattern;
     property PostviewSaveReplayPattern: String read fPostviewSaveReplayPattern write fPostviewSaveReplayPattern;
-
     property DisableSaveOptions: Boolean read fDisableSaveOptions write fDisableSaveOptions;
   published
   end;
@@ -339,7 +339,12 @@ begin
     try
       SaveToIniFile;
       BaseLevelPack.SaveUserData;
-      Hotkeys.SaveFile;
+
+      ////hotbookmark - this probably isnt needed anymore, but we still need
+      ////to find the code that temporarily saves the hotkey layout to memory
+      ////because that isn't needed either:
+      //Hotkeys.SaveFile;
+
       Success := true;
     except
       Sleep(50);
@@ -478,7 +483,7 @@ begin
   //SL.Add('');
   //SL.Add('# Online Options');
   //SaveBoolean('EnableOnline', EnableOnline);
-  //SaveBoolean('UpdateCheck', CheckUpdates);
+  SaveBoolean('UpdateCheck', CheckUpdates);
 
   SL.Add('');
   SL.Add('# Technical Options');
@@ -626,7 +631,7 @@ begin
     SetCurrentLevelToBestMatch(SL.Values['LastActiveLevel']);
 
     //EnableOnline := LoadBoolean('EnableOnline', EnableOnline);
-    //CheckUpdates := LoadBoolean('UpdateCheck', CheckUpdates);
+    CheckUpdates := LoadBoolean('UpdateCheck', CheckUpdates);
 
     DisableWineWarnings := LoadBoolean('DisableWineWarnings', DisableWineWarnings);
     FileCaching := LoadBoolean('FileCaching', FileCaching);

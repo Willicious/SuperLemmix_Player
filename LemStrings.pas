@@ -17,6 +17,8 @@ const
     SFGraphicsMenu = SFGraphics + 'menu\';
     SFGraphicsPanel = SFGraphics + 'panel\';
     SFGraphicsPanelHighRes = SFGraphics + 'panel-hr\';
+    SFVisualSFX = SFGraphics + 'visualsfx\';
+    SFVisualSFXHighRes = SFGraphics + 'visualsfx-hr\';
 
   SFStyles = 'styles\';
       SFDefaultStyle = 'default';
@@ -45,6 +47,7 @@ const
   // Sound effect files
   SFX_BUILDER_WARNING = 'ting';
   SFX_ASSIGN_SKILL = 'mousepre';
+  SFX_ASSIGN_FAIL = 'assignfail';
   SFX_YIPPEE = 'yippee';
   SFX_OING = 'oing';
   SFX_SPLAT = 'splat';
@@ -52,16 +55,20 @@ const
   SFX_ENTRANCE = 'door';
   SFX_EXIT_OPEN = 'exitopen';
   SFX_VAPORIZING = 'fire';
+  SFX_FREEZING = 'ice';
+  SFX_VINETRAPPING = 'weedgulp';
   SFX_DROWNING = 'glug';
   SFX_EXPLOSION = 'explode';
   SFX_HITS_STEEL = 'chink';
   SFX_OHNO = 'ohno';
   SFX_SKILLBUTTON = 'changeop';
+  SFX_CHANGE_RR = 'changerr';
   SFX_PICKUP = 'oing2';
   SFX_SWIMMING = 'splash';
   SFX_FALLOUT = 'die';
   SFX_FIXING = 'wrench';
   SFX_ZOMBIE = 'zombie';
+  SFX_ZOMBIE_DIE = 'zombiedie';
   SFX_TIMEUP = 'timeup';
 
 resourcestring
@@ -73,14 +80,14 @@ resourcestring
   {-------------------------------------------------------------------------------
     PreviewScreen
   -------------------------------------------------------------------------------}
-  SPreviewLemmings = ' Lemmings';
+  //SPreviewLemmings = ' Lemmings'; //not currently used
   SPreviewSave = ' To Be Saved';
   SPreviewReleaseRate = 'Release Rate ';
   SPreviewSpawnInterval = 'Spawn Interval ';
   SPreviewRRLocked = ' (Locked)';
   SPreviewTimeLimit = 'Time Limit ';
   SPreviewGroup = 'Group: ';
-  SPreviewAuthor = 'Author: ';
+  SPreviewAuthor = 'By ';
 
   {-------------------------------------------------------------------------------
     Game Screen Info Panel
@@ -88,8 +95,8 @@ resourcestring
 
   SAthlete = 'Athlete';
   STriathlete = 'Triathlete';
-  SQuadathlete = 'X-Athlete';
-  SQuintathlete = 'Jock';
+  SQuadathlete = 'Superstar';
+  SQuintathlete = 'Legend';
 
   SWalker = 'Walker';
   SAscender = 'Ascender';
@@ -104,7 +111,8 @@ resourcestring
   SFloater = 'Floater';
   SSplatter = 'Splatter';
   SExiter = 'Exiter';
-  SVaporizer = 'Frier';
+  SVaporizer = 'Vaporizer';
+  SVinetrapper = 'Vinetrapper';
   SBlocker = 'Blocker';
   SShrugger = 'Shrugger';
   STimebomber = 'Timebomber';
@@ -130,6 +138,7 @@ resourcestring
   SZombie = 'Zombie';
   SNeutral = 'Neutral';
   SNeutralZombie = 'N-Zombie';
+  SSleeper = 'Sleeper';
 
 
   {-------------------------------------------------------------------------------
@@ -138,8 +147,8 @@ resourcestring
   SYourTimeIsUp =
     'Your time is up!';
 
-  SAllLemmingsAccountedFor =
-    'All lemmings accounted for.';
+  //SAllLemmingsAccountedFor =
+    //'All lemmings accounted for.'; //not currently used
 
   STalismanUnlocked =
     'You unlocked a talisman!';
@@ -176,32 +185,36 @@ const
     SSplatter,    //13
     SExiter,      //14
     SVaporizer,   //15
-    SBlocker,     //16
-    SShrugger,    //17
-    STimebomber,  //18
+    SVinetrapper, //16
+    SBlocker,     //17
+    SShrugger,    //18
     STimebomber,  //19
-    SExploder,    //20
+    STimebomber,  //20
     SExploder,    //21
-    SDummyString, //22
-    SPlatformer,  //23
-    SStacker,     //24
-    SFreezer,     //25
+    SExploder,    //22
+    SDummyString, //23
+    SPlatformer,  //24
+    SStacker,     //25
     SFreezer,     //26
-    SSwimmer,     //27
-    SGlider,      //28
-    SDisarmer,    //29
-    SCloner,      //30
-    SFencer,      //31
-    SReacher,     //32
-    SShimmier,    //33
-    SJumper,      //34
-    SDehoister,   //35
-    SSlider,      //36
-    SDangler,     //37
-    SSpearer,     //38
-    SGrenader,    //39
-    SLooker,      //40
-    SLaserer      //41
+    SFreezer,     //27
+    SFreezer,     //28
+    SFreezer,     //29
+    SSwimmer,     //30
+    SGlider,      //31
+    SDisarmer,    //32
+    SCloner,      //33
+    SFencer,      //34
+    SReacher,     //35
+    SShimmier,    //36
+    SJumper,      //37
+    SDehoister,   //38
+    SSlider,      //39
+    SDangler,     //40
+    SSpearer,     //41
+    SGrenader,    //42
+    SLooker,      //43
+    SLaserer,     //44
+    SSleeper      //45
   );
 
 implementation

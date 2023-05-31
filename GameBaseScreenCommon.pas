@@ -26,7 +26,6 @@ type
     fScreenIsClosing     : Boolean;
     fCloseDelay          : Integer;
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
-    procedure FadeIn;
   protected
     procedure CloseScreen(aNextScreen: TGameScreenType); virtual;
     property ScreenIsClosing: Boolean read fScreenIsClosing;
@@ -36,6 +35,7 @@ type
   public
     constructor Create(aOwner: TComponent); override;
     destructor Destroy; override;
+    procedure FadeIn;
     procedure FadeOut;
 
     procedure MainFormResized; virtual; abstract;
@@ -95,10 +95,8 @@ end;
 constructor TGameBaseScreen.Create(aOwner: TComponent);
 begin
   inherited Create(aOwner);
-
   fScreenImg := TImage32.Create(Self);
   fScreenImg.Parent := Self;
-
   ScreenImg.Cursor := crNone;
 end;
 
@@ -108,8 +106,28 @@ begin
 end;
 
 procedure TGameBaseScreen.FadeIn;
+//var
+//  TempBitmap: TBitmap32;
+//  Steps: Integer;
+//  i: Integer;
 begin
-  //fadein code here
+//  Steps := 32;
+//  TempBitmap := TBitmap32.Create;
+//  try
+//    TempBitmap.SetSize(ScreenImg.Bitmap.Width, ScreenImg.Bitmap.Height);
+//    TempBitmap.Clear(clBlack32);
+//
+//    for i := 1 to Steps do
+//    begin
+//      TempBitmap.ResetAlpha($FF * i div Steps);
+//      TempBitmap.DrawTo(ScreenImg.Bitmap, 0, 0);
+//      Changed;
+//      Update;
+//      Sleep(20);
+//    end;
+//  finally
+//    TempBitmap.Free;
+//  end;
 end;
 
 procedure TGameBaseScreen.FadeOut;

@@ -91,6 +91,7 @@ type
     fHoldScrollData: THoldScrollData;
 
     fSuspensions: TList<TSuspendState>;
+    HotkeyManager: TLemmixHotkeyManager;
 
   { game eventhandler}
     procedure Game_Finished;
@@ -148,7 +149,6 @@ type
 
     function CheckHighlitLemmingChange: Boolean;
     procedure SetRedraw(aRedraw: TRedrawOption);
-
   protected
     fGame                : TLemmingGame;      // reference to globalgame gamemechanics
     Img                  : TImage32;          // the image in which the level is drawn (reference to inherited ScreenImg!)
@@ -159,9 +159,9 @@ type
     IdealFrameTimeMS     : Cardinal;          // normal frame speed in milliseconds
     IdealFrameTimeMSFast : Cardinal;          // fast forward framespeed in milliseconds
     IdealFrameTimeMSSlow : Cardinal;
-    IdealFrameTimeMSRewind : Cardinal;
     IdealFrameTimeMSSuperLemming : Cardinal;
     IdealScrollTimeMS    : Cardinal;          // scroll speed in milliseconds
+    RewindTimer          : TTimer;
     PrevCallTime         : Cardinal;          // last time we did something in idle
     PrevScrollTime       : Cardinal;          // last time we scrolled in idle
     PrevPausedRRTime     : Cardinal;          // last time we updated RR in idle
@@ -175,6 +175,8 @@ type
     fSaveStateFrame      : Integer;      // list of savestates (only first is used)
     fLastNukeKeyTime     : Cardinal;
     fScrollSpeed         : Integer;
+    fMouseClickFrameskip : Cardinal;
+    fLastMousePress      : Cardinal;
   { overridden}
     procedure PrepareGameParams; override;
     procedure CloseScreen(aNextScreen: TGameScreenType); override;
@@ -198,15 +200,17 @@ type
     property ProjectionType: Integer read fProjectionType write SetProjectionType;
     function DoSuspendCursor: Boolean;
 
+    procedure DoRewind(Sender: TObject);
     property GameSpeed: TGameSpeed read GetGameSpeed write SetGameSpeed;
     property HyperSpeedTarget: Integer read fHyperSpeedTarget write fHyperSpeedTarget;
     property IsHyperSpeed: Boolean read GetIsHyperSpeed;
 
-    function ScreenImage: TImage32; // to staisfy IGameWindow, should be moved to TGameBaseScreen, but it causes bugs there.
-    property DisplayWidth: Integer read GetDisplayWidth; // to staisfy IGameWindow
-    property DisplayHeight: Integer read GetDisplayHeight; // to staisfy IGameWindow
+    function ScreenImage: TImage32; // to satisfy IGameWindow, should be moved to TGameBaseScreen, but it causes bugs there.
+    property DisplayWidth: Integer read GetDisplayWidth; // to satisfy IGameWindow
+    property DisplayHeight: Integer read GetDisplayHeight; // to satisfy IGameWindow
     procedure SetForceUpdateOneFrame(aValue: Boolean);  // to satisfy IGameWindow
     procedure SetHyperSpeedTarget(aValue: Integer);     // to satisfy IGameWindow
+    function MouseFrameSkip: Integer; //Performs repeated skips when mouse buttons are held
   end;
 
 implementation
@@ -220,7 +224,6 @@ begin
   fGameSpeed := aValue;
   SkillPanel.DrawButtonSelector(spbPause, fGameSpeed = gspPause);
   SkillPanel.DrawButtonSelector(spbFastForward, fGameSpeed = gspFF);
-  SkillPanel.DrawButtonSelector(spbRewind, fGameSpeed = gspRewind);
 end;
 
 function TGameWindow.GetGameSpeed: TGameSpeed;
@@ -550,6 +553,17 @@ begin
   ClipCursor(nil);
 end;
 
+procedure TGameWindow.DoRewind(Sender: TObject);
+begin
+  //start-of-level check needs to give a few frames' grace
+  if Game.CurrentIteration <= 10 then
+  begin
+    RewindTimer.Enabled := False;
+    SkillPanel.RewindPressed := False;
+    Game.IsBackstepping := False;
+  end else
+    GoToSaveState(Game.CurrentIteration - 3); //hotbookmark
+end;
 
 procedure TGameWindow.Application_Idle(Sender: TObject; var Done: Boolean);
 {-------------------------------------------------------------------------------
@@ -564,10 +578,10 @@ var
   ContinueHyper: Boolean;
 
   CurrTime: Cardinal;
-        Fast, SuperLemming, Slow, Rewind, ForceOne, TimeForFrame, TimeForPausedRR,
-        TimeForFastForwardFrame, TimeForScroll, TimeForRewind, TimeForSuperLemming,
+        Fast, SuperLemming, Slow, ForceOne, TimeForFrame, TimeForPausedRR,
+        TimeForFastForwardFrame, TimeForScroll, TimeForSuperLemming,
         Hyper, Pause: Boolean;
-  PanelFrameSkip: Integer;
+  MouseClickFrameSkip: Integer;
 begin
   if fCloseToScreen <> gstUnknown then
   begin
@@ -585,10 +599,10 @@ begin
     Exit;
   end;
 
-  PanelFrameSkip := SkillPanel.FrameSkip;
+  MouseClickFrameSkip := MouseFrameSkip;
 
   if not GameParams.HideFrameskipping then
-  if PanelFrameSkip < 0 then
+  if MouseClickFrameSkip < 0 then
   begin
     if GameParams.NoAutoReplayMode then Game.CancelReplayAfterSkip := true;
     GotoSaveState(Max(Game.CurrentIteration-1, 0));
@@ -597,10 +611,9 @@ begin
   Pause := (fGameSpeed = gspPause);
   Fast := (fGameSpeed = gspFF);
   Superlemming := (fGameSpeed = gspSuperlemming);
-  Rewind := (fGameSpeed = gspRewind);
   Slow := (fGameSpeed = gspSlowMo);
   ForceOne := fForceUpdateOneFrame or fRenderInterface.ForceUpdate;
-  fForceUpdateOneFrame := (PanelFrameSkip > 0);
+  fForceUpdateOneFrame := (MouseClickFrameSkip > 0);
   CurrTime := TimeGetTime;
   if Slow then
     TimeForFrame := (not Pause) and (CurrTime - PrevCallTime > IdealFrameTimeMSSlow)
@@ -610,22 +623,26 @@ begin
   TimeForPausedRR := (Pause) and (CurrTime - PrevPausedRRTime > IdealFrameTimeMS);
   TimeForFastForwardFrame := Fast and (CurrTime - PrevCallTime > IdealFrameTimeMSFast);
   TimeForScroll := CurrTime - PrevScrollTime > IdealScrollTimeMS;
-  TimeForRewind := Rewind and (CurrTime - PrevCallTime > IdealFrameTimeMSRewind);
   TimeForSuperLemming := SuperLemming and (CurrTime - PrevCallTime > IdealFrameTimeMSSuperLemming);
   Hyper := IsHyperSpeed;
 
-  if TimeForRewind then
+  if SkillPanel.RewindPressed then //hotbookmark
   begin
-    if GameParams.ClassicMode then Game.CancelReplayAfterSkip := true;
-    PrevCallTime := CurrTime;
+    SkillPanel.DrawButtonSelector(spbRewind, True);
+    if GameParams.ClassicMode then
+      begin
+        Game.CancelReplayAfterSkip := true;
+        GameParams.PauseAfterBackwardsSkip := false;
+      end;
 
-    if Game.CurrentIteration = 0 then
-      GameSpeed := gspPause
-    else begin
-      GoToSaveState(Max(Game.CurrentIteration -3, 0));
-      GameSpeed := gspRewind;
-    end;
+    if not RewindTimer.Enabled then
+      RewindTimer.Enabled := True;
 
+  end else if not SkillPanel.RewindPressed then
+  begin
+    SkillPanel.DrawButtonSelector(spbRewind, False);
+    if RewindTimer.Enabled then
+      RewindTimer.Enabled := False;
   end;
 
   if TimeForSuperLemming then
@@ -763,9 +780,10 @@ begin
                        SoundManager.PlaySound(Msg.MessageDataStr);
       GAMEMSG_SOUND_BAL: if not IsHyperSpeed then
                            SoundManager.PlaySound(Msg.MessageDataStr,
+                           //bookmark - this needs to be checked, because the position isn't always correct
                            (Msg.MessageDataInt - Trunc(((Img.Width / 2) - Img.OffsetHorz) / Img.Scale)) div 2);
       GAMEMSG_MUSIC: SoundManager.PlayMusic;
-      GAMEMSG_SOUND_FREQ: if not IsHyperSpeed then
+      GAMEMSG_SOUND_FREQ: if not IsHyperSpeed then   //bookmark - follow this train
                            SoundManager.PlaySound(Msg.MessageDataStr, 0, Msg.MessageDataInt);
     end;
   end;
@@ -1040,13 +1058,18 @@ begin
 
   CanPlay := False;
 
-  if not (fGameSpeed = gspRewind) then
+  if not SkillPanel.RewindPressed then
   begin
   if PauseAfterSkip < 0 then
-    GameSpeed := gspNormal
-  else if ((aTargetIteration < Game.CurrentIteration) and GameParams.PauseAfterBackwardsSkip)
-       or (PauseAfterSkip > 0) then
-    GameSpeed := gspPause;
+  begin
+    GameSpeed := gspNormal;
+    Game.IsBackstepping := False;
+  end else if ((aTargetIteration < Game.CurrentIteration) and GameParams.PauseAfterBackwardsSkip)
+    or (PauseAfterSkip > 0) then
+    begin
+      GameSpeed := gspPause;
+      Game.IsBackstepping := True;
+    end;
   end;
 
   if (aTargetIteration <> Game.CurrentIteration) or fRanOneUpdate then
@@ -1062,8 +1085,10 @@ begin
     // Load save state or restart the level
     if UseSaveState >= 0 then
       Game.LoadSavedState(fSaveList[UseSaveState])
-    else
+    else begin
       Game.Start(true);
+      Game.IsBackstepping := False;
+    end;
   end;
 
   fSaveList.ClearAfterIteration(Game.CurrentIteration);
@@ -1222,15 +1247,12 @@ begin
   Color := $200020;
 
   fNeedResetMouseTrap := true;
-
   fSaveStateReplayStream := TMemoryStream.Create;
 
   // create game
   fGame := GlobalGame; // set ref to GlobalGame
   fScrollSpeed := 1;
-
   fSaveStateFrame := -1;
-
   fHyperSpeedTarget := -1;
 
   Img := ScreenImg; // set ref to inherited screenimg (just for a short name)
@@ -1258,22 +1280,23 @@ begin
   Img.OnMouseMove := Img_MouseMove;
   Img.OnMouseUp := Img_MouseUp;
 
+  RewindTimer := TTimer.Create(Self);
+  RewindTimer.Interval := 50; // hotbookmark
+  RewindTimer.OnTimer := DoRewind;
+
   SkillPanel.SetGame(fGame);
   SkillPanel.SetOnMinimapClick(SkillPanel_MinimapClick);
   Application.OnIdle := Application_Idle;
 
   fSaveList := TLemmingGameSavedStateList.Create(true);
-
   fReplayKilled := false;
-
   fMinimapBuffer := TBitmap32.Create;
   TLinearResampler.Create(fMinimapBuffer);
-
   DoubleBuffered := true;
-
   fSuspensions := TList<TSuspendState>.Create;
-
   fHighlitStartCopyLemming := TLemming.Create;
+  HotkeyManager := TLemmixHotkeyManager.Create;
+  fMouseClickFrameskip := GetTickCount;
 end;
 
 destructor TGameWindow.Destroy;
@@ -1285,17 +1308,13 @@ begin
     SkillPanel.SetGame(nil);
 
   fSaveList.Free;
-
   fSaveStateReplayStream.Free;
-
   FreeCursors;
-
   fMinimapBuffer.Free;
-
   fSuspensions.Free;
-
   fHighlitStartCopyLemming.Free;
-
+  HotkeyManager.Free;
+  RewindTimer.Free;
   inherited Destroy;
 end;
 
@@ -1338,6 +1357,7 @@ const
                          lka_DirRight,
                          lka_ForceWalker,
                          lka_Cheat,
+                         //lka_InfiniteSkills,
                          lka_Skip,
                          lka_SpecialSkip,
                          lka_FastForward,
@@ -1355,9 +1375,6 @@ const
                          lka_ReleaseMouse,
                          lka_Nuke,          // nuke also cancels, but requires double-press to do so so handled elsewhere
                          lka_ClearPhysics,
-                         //lka_ToggleShadows,
-                         //lka_Projection,
-                         //lka_SkillProjection,
                          lka_ShowUsedSkills,
                          lka_ZoomIn,
                          lka_ZoomOut,
@@ -1385,7 +1402,10 @@ begin
       Game.RegainControl(true); // force the cancel even if in Replay Insert mode
 
     if (func.Action in [lka_ReleaseRateMax, lka_ReleaseRateDown, lka_ReleaseRateUp, lka_ReleaseRateMin]) then
-      Game.RegainControl; // we do not want to FORCE it in this case; Replay Insert mode should be respected here
+      begin
+        Game.RegainControl; // we do not want to FORCE it in this case; Replay Insert mode should be respected here
+        Game.IsBackstepping := False;
+      end;
 
     if func.Action = lka_Skill then
     begin
@@ -1406,10 +1426,17 @@ begin
                           SetSelectedSkill(spbSlower, True, True);
                           end;
       lka_Pause: begin
-                   if fGameSpeed = gspPause then
-                     GameSpeed := gspNormal
-                   else
+                 if SkillPanel.RewindPressed then SkillPanel.RewindPressed := False;
+
+                 if fGameSpeed = gspPause then
+                   begin
+                     GameSpeed := gspNormal;
+                     Game.IsBackstepping := False;
+                   end else begin
                      GameSpeed := gspPause;
+                     SkillPanel.RewindPressed := False;
+                     Game.IsBackstepping := True;
+                   end;
                  end;
       lka_Nuke: begin
                   // double keypress needed to prevent accidently nuking
@@ -1450,22 +1477,40 @@ begin
                         end;
                       end;
       lka_Cheat: Game.Cheat;
+      //lka_InfiniteSkills: Game.SetSkillsToInfinite;
       lka_FastForward: begin
+                         if SkillPanel.RewindPressed then SkillPanel.RewindPressed := False;
+
+                         if Game.IsBackstepping then Game.IsBackstepping := False;
+
                          case fGameSpeed of
-                           gspNormal, gspSlowMo, gspPause, gspRewind: GameSpeed := gspFF;
+                           gspNormal, gspSlowMo, gspPause: GameSpeed := gspFF;
                            gspFF: GameSpeed := gspNormal;
                          end;
                        end;
       lka_Rewind: begin
                     case fGameSpeed of
-                      gspNormal, gspSlowMo, gspPause, gspFF: GameSpeed := gspRewind;
-                      gspRewind: GameSpeed := gspNormal;
+                      gspSlowMo, gspPause, gspFF: GameSpeed := gspNormal;
+                    end;
+
+                    if not SkillPanel.RewindPressed then
+                    begin
+                      SkillPanel.RewindPressed := True;
+                      Game.IsBackstepping := True;
+                    end else if SkillPanel.RewindPressed then
+                    begin
+                      SkillPanel.RewindPressed := False;
+                      Game.IsBackstepping := False;
                     end;
                   end;
       lka_SlowMotion: if not GameParams.HideFrameskipping then
                       begin
+                        if SkillPanel.RewindPressed then SkillPanel.RewindPressed := False;
+
+                        if Game.IsBackstepping then Game.IsBackstepping := False;
+
                         case fGameSpeed of
-                          gspNormal, gspFF, gspPause, gspRewind: GameSpeed := gspSlowMo;
+                          gspNormal, gspFF, gspPause: GameSpeed := gspSlowMo;
                           gspSlowMo: GameSpeed := gspNormal;
                         end;
                       end;
@@ -1507,12 +1552,17 @@ begin
                   begin
                     if GameParams.NoAutoReplayMode then Game.CancelReplayAfterSkip := true;
                     if CurrentIteration > (func.Modifier * -1) then
-                      GotoSaveState(CurrentIteration + func.Modifier)
-                    else
+                    begin
+                      GotoSaveState(CurrentIteration + func.Modifier);
+                      Game.IsBackstepping := True;
+                    end else begin
                       GotoSaveState(0);
+                      Game.IsBackstepping := False;
+                    end;
                   end else if func.Modifier > 1 then
                   begin
                     fHyperSpeedTarget := CurrentIteration + func.Modifier;
+                    Game.IsBackstepping := False;
                   end else
                     if fGameSpeed = gspPause then fForceUpdateOneFrame := true;
       lka_SpecialSkip: HandleSpecialSkip(func.Modifier);
@@ -1670,6 +1720,7 @@ procedure TGameWindow.Img_MouseDown(Sender: TObject; Button: TMouseButton;
 var
   PassKey: Word;
   OldHighlightLemming: TLemming;
+  RightMouseUnassigned: Boolean;
 begin
   if (not fMouseTrapped) and (not fSuspendCursor) and GameParams.EdgeScroll then
     ApplyMouseTrap;
@@ -1680,6 +1731,7 @@ begin
     SetAdjustedGameCursorPoint(Img.ControlToBitmap(Point(X, Y)));
 
     CheckShifts(Shift);
+    Game.PlayAssignFailSound;
 
     // Middle or Right clicks get passed to the keyboard handler, because their
     // handling has more in common with that than with mouse handling
@@ -1692,6 +1744,9 @@ begin
     if PassKey <> 0 then
       Form_KeyDown(Sender, PassKey, Shift);
 
+    //we need to make sure the right mouse button is unassigned
+    RightMouseUnassigned := HotkeyManager.CheckKeyAssigned(lka_Null, 2);
+
     if (Button = mbLeft) and not Game.IsHighlightHotkey then
     begin
       Game.RegainControl;
@@ -1699,6 +1754,11 @@ begin
       Game.ProcessSkillAssignment;
       if not GameParams.HideFrameskipping then
       if fGameSpeed = gspPause then fForceUpdateOneFrame := True;
+    end else if (Button = mbRight) and RightMouseUnassigned
+    and not GameParams.HideFrameskipping then
+    begin
+      GoToSaveState(Max(Game.CurrentIteration -1, 0));
+      Game.IsBackstepping := True;
     end;
 
     if Game.IsHighlightHotkey then
@@ -1712,6 +1772,7 @@ begin
     if fGameSpeed = gspPause then
       DoDraw;
 
+    fLastMousePress := GetTickCount;
   end;
 end;
 
@@ -1751,6 +1812,7 @@ procedure TGameWindow.Img_MouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer; Layer: TCustomLayer);
 begin
   CheckShifts(Shift);
+  fMouseClickFrameskip := GetTickCount;
 end;
 
 procedure TGameWindow.InitializeCursor;
@@ -1850,7 +1912,6 @@ begin
   IdealFrameTimeMSFast := 10;
   IdealFrameTimeMSSuperLemming := 30;
   IdealScrollTimeMS := 15;
-  IdealFrameTimeMSRewind := 22;    //bookmark - may need to change this
   IdealFrameTimeMS := 60; // normal
   IdealFrameTimeMSSlow := 240;
 
@@ -1953,7 +2014,7 @@ const
      (baFalling, baGliding),
      (baOhnoing, baExploding),
      (baTimebombing, baTimebombFinish),
-     (baFreezing, baFreezeFinish),
+     (baFreezing, baFreezerExplosion),
      (baReaching, baShimmying)
     );
 
@@ -2004,6 +2065,7 @@ begin
                 'will attempt to play the replay anyway.');
 
   GameSpeed := gspNormal;
+  Game.IsBackstepping := False;
   GotoSaveState(0, -1);
   CanPlay := True;
 end;
@@ -2256,7 +2318,40 @@ begin
     fNeedRedraw := aRedraw;
 end;
 
+//Mouse performs repeated forwards and backwards frameskips when held
+function TGameWindow.MouseFrameSkip: Integer;
+var
+  RightMouseUnassigned: Boolean;
+begin
+  Result := 0;
+  if GameParams.HideFrameskipping then Exit;
+
+  if GetTickCount - fMouseClickFrameskip < 650 then
+    Exit;
+
+  // we need to make sure the right mouse button is unassigned
+  RightMouseUnassigned := HotkeyManager.CheckKeyAssigned(lka_Null, 2);
+
+  if (GameSpeed = gspPause) and not SkillPanel.CursorOverClickableItem then
+  begin
+    if (GetKeyState(VK_LBUTTON) < 0) and (GetKeyState(VK_RBUTTON) >= 0) then
+    begin
+      if GetTickCount - fLastMousePress > 650 then
+      begin
+        Result := 1;
+        fMouseClickFrameskip := GetTickCount - 500;
+      end;
+    end
+    else if (GetKeyState(VK_RBUTTON) < 0) and (GetKeyState(VK_LBUTTON) >= 0)
+    and RightMouseUnassigned then
+    begin
+      if GetTickCount - fLastMousePress > 650 then
+      begin
+        Result := -1;
+        fMouseClickFrameskip := GetTickCount - 500;
+      end;
+    end;
+  end;
+end;
+
 end.
-
-
-

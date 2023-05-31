@@ -24,8 +24,10 @@ const
   dos animations ordered by their appearance in main.dat
   the constants below show the exact order
 -------------------------------------------------------------------------------}
-  NUM_LEM_SPRITES     = 71;   //num lem sprites
-  NUM_LEM_SPRITE_TYPE = 35;        //num lem sprite types
+  //MUST MATCH BELOW (not the next list, the one after that)
+  //And don't forget to update the numbers! ;P
+  NUM_LEM_SPRITES     = 81;   //num lem sprites
+  NUM_LEM_SPRITE_TYPE = 40;        //num lem sprite types
   WALKING             = 0;    //1  //1
   WALKING_RTL         = 1;    //2
   ASCENDING           = 2;    //3  //2
@@ -52,58 +54,66 @@ const
   SPLATTING_RTL       = 23;   //24
   EXITING             = 24;   //25 //13
   EXITING_RTL         = 25;   //26
-  FRIED               = 26;   //27 //14
-  FRIED_RTL           = 27;   //28
-  BLOCKING            = 28;   //29 //15
-  BLOCKING_RTL        = 29;   //30
-  SHRUGGING           = 30;   //31 //16
-  SHRUGGING_RTL       = 31;   //32
-  TIMEBOMBEXPLOSION   = 32;   //33 //17
-  TIMEBOMBEXPLOSION_RTL = 33; //34
-  OHNOING             = 34;   //35 //18
-  OHNOING_RTL         = 35;   //36
-  EXPLOSION           = 36;   //37 //19
-  EXPLOSION_RTL       = 37;   //38
-  PLATFORMING         = 38;   //39 //20
-  PLATFORMING_RTL     = 39;   //40
-  FREEZEREXPLOSION     = 40;  //41 //21
-  FREEZEREXPLOSION_RTL = 41;  //42
-  SWIMMING            = 42;   //43 //22
-  SWIMMING_RTL        = 43;   //44
-  GLIDING             = 44;   //45 //23
-  GLIDING_RTL         = 45;   //46
-  FIXING              = 46;   //47 //24
-  FIXING_RTL          = 47;   //48
-  STACKING            = 48;   //49 //25
-  STACKING_RTL        = 49;   //50
-  FENCING             = 50;   //51 //26
-  FENCING_RTL         = 51;   //52
-  REACHING            = 52;   //53 //27
-  REACHING_RTL        = 53;   //54
-  SHIMMYING           = 54;   //55 //28
-  SHIMMYING_RTL       = 55;   //56
-  JUMPING             = 56;   //57 //29
-  JUMPING_RTL         = 57;   //58
-  DEHOISTING          = 58;   //59 //30
-  DEHOISTING_RTL      = 59;   //60
-  SLIDING             = 60;   //61 //31
-  SLIDING_RTL         = 61;   //62
-  DANGLING            = 62;   //63 //32
-  DANGLING_RTL        = 63;   //64
-  THROWING            = 64;   //65 //33
-  THROWING_RTL        = 65;   //66
-  LOOKING             = 66;   //67 //34
-  LOOKING_RTL         = 67;   //68
-  LASERING            = 68;   //69 //35
-  LASERING_RTL        = 69;   //70
-  FROZEN              = 70;   //71 this one does NOT need an RTL form;
+  VAPORIZING          = 26;   //27 //14
+  VAPORIZING_RTL      = 27;   //28
+  VINETRAPPING        = 28;   //29 //15
+  VINETRAPPING_RTL    = 29;   //30
+  BLOCKING            = 30;   //31 //16
+  BLOCKING_RTL        = 31;   //32
+  SHRUGGING           = 32;   //33 //17
+  SHRUGGING_RTL       = 33;   //34
+  TIMEBOMBEXPLOSION   = 34;   //35 //18
+  TIMEBOMBEXPLOSION_RTL= 35;  //36
+  OHNOING             = 36;   //37 //19
+  OHNOING_RTL         = 37;   //38
+  EXPLOSION           = 38;   //39 //20
+  EXPLOSION_RTL       = 39;   //40
+  PLATFORMING         = 40;   //41 //21
+  PLATFORMING_RTL     = 41;   //42
+  FREEZING            = 42;   //43 //22
+  FREEZING_RTL        = 43;   //44
+  FREEZEREXPLOSION    = 44;   //45 //23
+  FREEZEREXPLOSION_RTL= 45;   //46
+  FROZEN              = 46;   //47 //24
+  FROZEN_RTL          = 47;   //48
+  UNFREEZING          = 48;   //49 //25
+  UNFREEZING_RTL      = 49;   //50
+  SWIMMING            = 50;   //51 //26
+  SWIMMING_RTL        = 51;   //52
+  GLIDING             = 52;   //53 //27
+  GLIDING_RTL         = 53;   //54
+  FIXING              = 54;   //55 //28
+  FIXING_RTL          = 55;   //56
+  STACKING            = 56;   //57 //29
+  STACKING_RTL        = 57;   //58
+  FENCING             = 58;   //59 //30
+  FENCING_RTL         = 59;   //60
+  REACHING            = 60;   //61 //31
+  REACHING_RTL        = 61;   //62
+  SHIMMYING           = 62;   //63 //32
+  SHIMMYING_RTL       = 63;   //64
+  JUMPING             = 64;   //65 //33
+  JUMPING_RTL         = 65;   //66
+  DEHOISTING          = 66;   //67 //34
+  DEHOISTING_RTL      = 67;   //68
+  SLIDING             = 68;   //69 //35
+  SLIDING_RTL         = 69;   //70
+  DANGLING            = 70;   //71 //36
+  DANGLING_RTL        = 71;   //72
+  THROWING            = 72;   //73 //37
+  THROWING_RTL        = 73;   //74
+  LOOKING             = 74;   //75 //38
+  LOOKING_RTL         = 75;   //76
+  LASERING            = 76;   //77 //39
+  LASERING_RTL        = 77;   //78
+  SLEEPING            = 78;   //79 //40
+  SLEEPING_RTL        = 79;   //80
+  ICECUBE             = 80;   //81 this one does NOT need an RTL form;
                               //in fact in needs to be moved to the Masks section
                               //also, it's not counted as a "sprite type"
 
-  // never made sense to me why it lists the right-facing on the left
-  // and the left-facing on the right. Is this standard practice? Maybe
-  // I should change it... at some point.
-  AnimationIndices : array[TBasicLemmingAction, LTR..RTL] of Integer = ( //needs to match TBasicLemmingAction in LemCore / LemStrings
+  //This one must match TBasicLemmingAction in LemCore / LemStrings
+  AnimationIndices : array[TBasicLemmingAction, LTR..RTL] of Integer = (
     (0,0),                                    // 1 baNone
     (WALKING, WALKING_RTL),                   // 2 baWalk,
     (ASCENDING, ASCENDING_RTL),               // 3 baAscending,
@@ -118,33 +128,37 @@ const
     (UMBRELLA, UMBRELLA_RTL),                 // 12 baUmbrella,
     (SPLATTING, SPLATTING_RTL),               // 13 baSplatting,
     (EXITING, EXITING_RTL),                   // 14 baExiting,
-    (FRIED, FRIED_RTL),                       // 15 baFried,
-    (BLOCKING, BLOCKING_RTL),                 // 16 baBlocking,
-    (SHRUGGING, SHRUGGING_RTL),               // 17 baShrugging,
-    (OHNOING, OHNOING_RTL),                   // 18 baTimebombing,
-    (TIMEBOMBEXPLOSION, TIMEBOMBEXPLOSION_RTL), // 19 baTimebombFinish,
-    (OHNOING, OHNOING_RTL),                   // 20 baOhnoing,
-    (EXPLOSION, EXPLOSION_RTL),               // 21 baExploding,
-    (0,0),                                    // 22 baToWalking. Should never happen.
-    (PLATFORMING, PLATFORMING_RTL),           // 23 baPlatforming
-    (STACKING, STACKING_RTL),                 // 24 baStacking
-    (OHNOING, OHNOING_RTL),                   // 25 baFreezing
-    (FREEZEREXPLOSION, FREEZEREXPLOSION_RTL), // 26 baFreezeFinish
-    (SWIMMING, SWIMMING_RTL),                 // 27 baSwimming
-    (GLIDING, GLIDING_RTL),                   // 28 baGliding
-    (FIXING, FIXING_RTL),                     // 29 baFixing
-    (0,0),                                    // 30 baCloning? Another that should never happen
-    (FENCING, FENCING_RTL),                   // 31 baFencing
-    (REACHING, REACHING_RTL),                 // 32 baReaching (for shimmier)
-    (SHIMMYING, SHIMMYING_RTL),               // 33 baShimmying
-    (JUMPING, JUMPING_RTL),                   // 34 baJumping
-    (DEHOISTING, DEHOISTING_RTL),             // 35 baDehoisting
-    (SLIDING, SLIDING_RTL),                   // 36 baSliding
-    (DANGLING, DANGLING_RTL),                 // 37 baDangling
-    (THROWING, THROWING_RTL),                 // 38 baSpearing
-    (THROWING, THROWING_RTL),                 // 39 baGrenading
-    (LOOKING, LOOKING_RTL),                   // 40 baLooking
-    (LASERING, LASERING_RTL)                  // 41 baLasering
+    (VAPORIZING, VAPORIZING_RTL),             // 15 baVaporizing,
+    (VINETRAPPING, VINETRAPPING_RTL),         // 16 baVinetrapping,
+    (BLOCKING, BLOCKING_RTL),                 // 17 baBlocking,
+    (SHRUGGING, SHRUGGING_RTL),               // 18 baShrugging,
+    (OHNOING, OHNOING_RTL),                   // 19 baTimebombing,
+    (TIMEBOMBEXPLOSION, TIMEBOMBEXPLOSION_RTL), // 20 baTimebombFinish,
+    (OHNOING, OHNOING_RTL),                   // 21 baOhnoing,
+    (EXPLOSION, EXPLOSION_RTL),               // 22 baExploding,
+    (0,0),                                    // 23 baToWalking. Should never happen.
+    (PLATFORMING, PLATFORMING_RTL),           // 24 baPlatforming
+    (STACKING, STACKING_RTL),                 // 25 baStacking
+    (FREEZING, FREEZING_RTL),                 // 26 baFreezing
+    (FREEZEREXPLOSION, FREEZEREXPLOSION_RTL), // 27 baFreezerExplosion
+    (FROZEN, FROZEN_RTL),                     // 28 baFrozen
+    (UNFREEZING, UNFREEZING_RTL),             // 29 baUnfreezing
+    (SWIMMING, SWIMMING_RTL),                 // 30 baSwimming
+    (GLIDING, GLIDING_RTL),                   // 31 baGliding
+    (FIXING, FIXING_RTL),                     // 32 baFixing
+    (0,0),                                    // 33 baCloning? Another that should never happen
+    (FENCING, FENCING_RTL),                   // 34 baFencing
+    (REACHING, REACHING_RTL),                 // 35 baReaching (for shimmier)
+    (SHIMMYING, SHIMMYING_RTL),               // 36 baShimmying
+    (JUMPING, JUMPING_RTL),                   // 37 baJumping
+    (DEHOISTING, DEHOISTING_RTL),             // 38 baDehoisting
+    (SLIDING, SLIDING_RTL),                   // 39 baSliding
+    (DANGLING, DANGLING_RTL),                 // 40 baDangling
+    (THROWING, THROWING_RTL),                 // 41 baSpearing
+    (THROWING, THROWING_RTL),                 // 42 baGrenading
+    (LOOKING, LOOKING_RTL),                   // 43 baLooking
+    (LASERING, LASERING_RTL),                 // 44 baLasering
+    (SLEEPING, SLEEPING_RTL)                  // 45 baSleeping
   );
 
 type
@@ -157,6 +171,7 @@ type
     fLemmingAnimations     : TBitmaps; // the list of lemmings bitmaps
 
     fCountDownDigitsBitmap  : TBitmap32;
+    fHatchNumbersBitmap     : TBitmap32;
     fHighlightBitmap        : TBitmap32;
     fTheme                  : TNeoTheme;
 
@@ -181,6 +196,7 @@ type
     property LemmingAnimations     : TBitmaps read fLemmingAnimations;
     property MetaLemmingAnimations : TMetaLemmingAnimations read fMetaLemmingAnimations;
     property CountDownDigitsBitmap : TBitmap32 read fCountDownDigitsBitmap;
+    property HatchNumbersBitmap    : TBitmap32 read fHatchNumbersBitmap;
     property HighlightBitmap       : TBitmap32 read fHighlightBitmap;
     property Recolorer             : TRecolorImage read fRecolorer;
 
@@ -198,9 +214,9 @@ uses
 
 procedure TBaseAnimationSet.LoadMetaData(aColorDict: TColorDict; aShadeDict: TShadeDict);
 const
-  // These match the order these are stored by this class. They do NOT have to be in this
-  // order in "scheme.nxmi", they just have to all be there.
-  ANIM_NAMES: array[0..34] of String =  (
+// MUST MATCH ABOVE (not the next list, the one after that)
+// They also need to appear in "scheme.nxmi", but the order doesn't matter there
+  ANIM_NAMES: array[0..39] of String =  (
   'WALKER',        //1
   'ASCENDER',      //2
   'DIGGER',        //3
@@ -214,28 +230,33 @@ const
   'FLOATER',       //11
   'SPLATTER',      //12
   'EXITER',        //13
-  'BURNER',        //14
-  'BLOCKER',       //15
-  'SHRUGGER',      //16
-  'TIMEBOMBER',    //17
-  'OHNOER',        //18
-  'BOMBER',        //19
-  'PLATFORMER',    //20
-  'FREEZER',       //21
-  'SWIMMER',       //22
-  'GLIDER',        //23
-  'DISARMER',      //24
-  'STACKER',       //25
-  'FENCER',        //26
-  'REACHER',       //27
-  'SHIMMIER',      //28
-  'JUMPER',        //29
-  'DEHOISTER',     //30
-  'SLIDER',        //31
-  'DANGLER',       //32
-  'THROWER',       //33
-  'LOOKER',        //34
-  'LASERER'        //35
+  'BURNER',        //14 //aka Vaporizer
+  'VINETRAPPER',   //15
+  'BLOCKER',       //16
+  'SHRUGGER',      //17
+  'TIMEBOMBER',    //18
+  'OHNOER',        //19
+  'BOMBER',        //20
+  'PLATFORMER',    //21
+  'FREEZING',      //22
+  'FREEZER',       //23
+  'FROZEN',        //24
+  'UNFREEZING',    //25
+  'SWIMMER',       //26
+  'GLIDER',        //27
+  'DISARMER',      //28
+  'STACKER',       //29
+  'FENCER',        //30
+  'REACHER',       //31
+  'SHIMMIER',      //32
+  'JUMPER',        //33
+  'DEHOISTER',     //34
+  'SLIDER',        //35
+  'DANGLER',       //36
+  'THROWER',       //37
+  'LOOKER',        //38
+  'LASERER',       //39
+  'SLEEPER'        //40
   );
   DIR_NAMES: array[0..1] of String = ('RIGHT', 'LEFT');
 var
@@ -352,7 +373,7 @@ begin
   // Setting the foot position of the freezer mask.
   // This should be irrelevant for the freezer mask, as the freezer mask is not positioned wrt. the lemming's foot.
   // For other sprites, the foot position is required though.
-  with fMetaLemmingAnimations[FROZEN] do
+  with fMetaLemmingAnimations[ICECUBE] do
   begin
     FrameCount := 1;
     FootX := 8 * ResMod;
@@ -456,24 +477,29 @@ begin
     fCountDownDigitsBitmap.DrawMode := dmBlend;
     fCountDownDigitsBitmap.CombineMode := cmMerge;
 
+    fHatchNumbersBitmap.DrawMode := dmBlend;
+    fHatchNumbersBitmap.CombineMode := cmMerge;
+
     fHighlightBitmap.DrawMode := dmBlend;
     fHighlightBitmap.CombineMode := cmMerge;
 
     if GameParams.HighResolution then
     begin
-      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'freezer-hr.png', fLemmingAnimations[FROZEN]);
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'freezer-hr.png', fLemmingAnimations[ICECUBE]);
       TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'highlight-hr.png', fHighlightBitmap);
       TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'countdown-hr.png', fCountdownDigitsBitmap);
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'numbers-hr.png', fHatchNumbersBitmap);
     end else begin
-      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'freezer.png', fLemmingAnimations[FROZEN]);
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'freezer.png', fLemmingAnimations[ICECUBE]);
       TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'highlight.png', fHighlightBitmap);
       TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'countdown.png', fCountdownDigitsBitmap);
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'numbers.png', fHatchNumbersBitmap);
     end;
 
-    fMetaLemmingAnimations[FROZEN].Width := fLemmingAnimations[FROZEN].Width;
-    fMetaLemmingAnimations[FROZEN].Height := fLemmingAnimations[FROZEN].Height;
-    fLemmingAnimations[FROZEN].DrawMode := dmBlend;
-    fLemmingAnimations[FROZEN].CombineMode := cmMerge;
+    fMetaLemmingAnimations[ICECUBE].Width := fLemmingAnimations[ICECUBE].Width;
+    fMetaLemmingAnimations[ICECUBE].Height := fLemmingAnimations[ICECUBE].Height;
+    fLemmingAnimations[ICECUBE].DrawMode := dmBlend;
+    fLemmingAnimations[ICECUBE].CombineMode := cmMerge;
   finally
     TempBitmap.Free;
     ColorDict.Free;
@@ -487,6 +513,7 @@ begin
   fLemmingAnimations.Clear;
   fMetaLemmingAnimations.Clear;
   fCountDownDigitsBitmap.Clear;
+  fHatchNumbersBitmap.Clear;
   fHighlightBitmap.Clear;
   fHasZombieColor := false;
   fHasNeutralColor := false;
@@ -500,6 +527,7 @@ begin
   fLemmingAnimations := TBitmaps.Create;
   fRecolorer := TRecolorImage.Create;
   fCountDownDigitsBitmap := TBitmap32.Create;
+  fHatchNumbersBitmap := TBitmap32.Create;
   fHighlightBitmap := TBitmap32.Create;
 end;
 
@@ -508,6 +536,7 @@ begin
   fMetaLemmingAnimations.Free;
   fLemmingAnimations.Free;
   fCountDownDigitsBitmap.Free;
+  fHatchNumbersBitmap.Free;
   fHighlightBitmap.Free;
   fRecolorer.Free;
   inherited Destroy;

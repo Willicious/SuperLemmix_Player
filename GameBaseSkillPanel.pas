@@ -31,9 +31,7 @@ type
     fIsBlinkFrame         : Boolean;
     fOnMinimapClick       : TMinimapClickEvent; // event handler for minimap
 
-    fCombineHueShift : Single;
-
-    function CheckFrameSkip: Integer; // Checks the duration since the last click on the panel.
+    fCombineHueShift      : Single;
 
     procedure LoadPanelFont;
     procedure LoadSkillIcons;
@@ -57,7 +55,6 @@ type
     fMinimapTemp          : TBitmap32; // temp image, to create fMinimapImage from fMinimap
 
     fMinimapScrollFreeze  : Boolean;
-    fLastClickFrameskip   : Cardinal;
 
     fSkillFont            : TFontBitmapArray;
     fSkillFontInvert      : TFontBitmapArray;
@@ -73,6 +70,8 @@ type
     fHighlitSkill         : TSkillPanelButton;
     fLastHighlitSkill     : TSkillPanelButton; // to avoid sounds when shouldn't be played
 
+    fRewindPressed        : Boolean;
+
     fLastDrawnStr         : String;
     fNewDrawStr           : String;
 
@@ -86,7 +85,6 @@ type
     // Helper functions for positioning
     function FirstButtonRect: TRect; virtual;
     function ButtonRect(Index: Integer): TRect;
-    function HalfButtonRect(Index: Integer; IsUpper: Boolean): TRect;
     function MinimapRect: TRect; virtual; abstract;
     function MinimapWidth: Integer;
     function MinimapHeight: Integer;
@@ -159,18 +157,20 @@ type
 
     property Image: TImage32 read fImage;
 
+    procedure PlayReleaseRateSound;
     procedure DrawButtonSelector(aButton: TSkillPanelButton; Highlight: Boolean);
     procedure DrawMinimap; virtual;
 
+    property RewindPressed: Boolean read fRewindPressed write fRewindPressed;
     property Minimap: TBitmap32 read fMinimap;
     property MinimapScrollFreeze: Boolean read fMinimapScrollFreeze write SetMinimapScrollFreeze;
 
     property Zoom: Integer read GetZoom write SetZoom;
     property MaxZoom: Integer read GetMaxZoom;
 
-    property FrameSkip: Integer read CheckFrameSkip;
     property SkillPanelSelectDx: Integer read fSelectDx write fSelectDx;
     property ShowUsedSkills: Boolean read fShowUsedSkills write SetShowUsedSkills;
+    function CursorOverClickableItem: Boolean;
   end;
 
   procedure ModString(var aString: String; const aNew: String; const aStart: Integer);
@@ -240,8 +240,6 @@ begin
   ParentBackground := false;
   DoubleBuffered := true;
 
-  fLastClickFrameskip := GetTickCount;
-
   // Initialize images
   fImage := TImage32.Create(Self);
   fImage.Parent := Self;
@@ -271,6 +269,8 @@ begin
   fMinimapImage.OnMouseDown := MinimapMouseDown;
   fMinimapImage.OnMouseMove := MinimapMouseMove;
   fMinimapImage.OnMouseUp := MinimapMouseUp;
+
+  fRewindPressed := False;
 
   // Create font and skill panel images (but do not yet load them)
   SetLength(fInfoFont, NUM_FONT_CHARS);
@@ -382,16 +382,6 @@ function TBaseSkillPanel.ButtonRect(Index: Integer): TRect;
 begin
   Result := FirstButtonRect;
   OffsetRect(Result, Index * 16 * ResMod, 0);
-end;
-
-function TBaseSkillPanel.HalfButtonRect(Index: Integer; IsUpper: Boolean): TRect;
-begin
-  Result := FirstButtonRect;
-  OffsetRect(Result, Index * 16 * ResMod, 0);
-  if IsUpper then
-    Result.Bottom := (Result.Top + Result.Bottom) div 2 - ResMod
-  else
-    Result.Top := (Result.Top + Result.Bottom) div 2 + ResMod;
 end;
 
 function TBaseSkillPanel.FirstSkillButtonIndex: Integer;
@@ -705,25 +695,25 @@ begin
     //////////////////////////////////////////////////////////
 
     // Walker, Jumper, Shimmier, Slider, Climber, - all simple
-    DrawAnimationFrame(fSkillIcons[spbWalker], WALKING, 1, 6, 21);
-    DrawAnimationFrame(fSkillIcons[spbJumper], JUMPING, 0, 6, 20);
-    DrawAnimationFrame(fSkillIcons[spbShimmier], SHIMMYING, 1, 7, 20);
+    DrawAnimationFrame(fSkillIcons[spbWalker], WALKING, 1, 6, 20);
+    DrawAnimationFrame(fSkillIcons[spbJumper], JUMPING, 0, 6, 19);
+    DrawAnimationFrame(fSkillIcons[spbShimmier], SHIMMYING, 1, 7, 19);
     DrawAnimationFrame(fSkillIcons[spbSlider], SLIDING_RTL, 0, 5, 21);
-    DrawAnimationFrame(fSkillIcons[spbClimber], CLIMBING, 3, 10, 22);
+    DrawAnimationFrame(fSkillIcons[spbClimber], CLIMBING, 3, 10, 20);
 
     // Swimmer - we need to draw the background water
-    DrawAnimationFrame(fSkillIcons[spbSwimmer], SWIMMING, 2, 8, 19);
+    DrawAnimationFrame(fSkillIcons[spbSwimmer], SWIMMING, 2, 8, 18);
     Outline(fSkillIcons[spbSwimmer]);
     TempBmp.Assign(fSkillIcons[spbSwimmer]);
     fSkillIcons[spbSwimmer].Clear(0);
-    fSkillIcons[spbSwimmer].FillRect(0, 17 * ResMod, 15 * ResMod, 23 * ResMod, $FF000000);
-    fSkillIcons[spbSwimmer].FillRect(0, 18 * ResMod, 15 * ResMod, 23 * ResMod, $FF0000FF);
+    fSkillIcons[spbSwimmer].FillRect(0, 17 * ResMod, 15 * ResMod, 22 * ResMod, $FF000000);
+    fSkillIcons[spbSwimmer].FillRect(0, 18 * ResMod, 15 * ResMod, 22 * ResMod, $FF0000FF);
     TempBmp.DrawTo(fSkillIcons[spbSwimmer]);
 
     // Floater, Glider, Disarmer - all simple
-    DrawAnimationFrame(fSkillIcons[spbFloater], UMBRELLA, 4, 7, 26);
-    DrawAnimationFrame(fSkillIcons[spbGlider], GLIDING, 4, 7, 26);
-    DrawAnimationFrame(fSkillIcons[spbDisarmer], FIXING, 6, 4, 21);
+    DrawAnimationFrame(fSkillIcons[spbFloater], UMBRELLA, 4, 7, 23);
+    DrawAnimationFrame(fSkillIcons[spbGlider], GLIDING, 4, 7, 25);
+    DrawAnimationFrame(fSkillIcons[spbDisarmer], FIXING, 6, 4, 20);
 
     //Timebomber has its own graphic
     if GameParams.HighResolution then
@@ -731,43 +721,41 @@ begin
     else
       TPngInterface.LoadPngFile(AppPath + SFGraphicsPanel + 'icon_timebomber.png', fIconBMP);
 
-      fIconBmp.DrawTo(fSkillIcons[spbTimebomber], -1 * ResMod, 8 * ResMod);
+    fIconBmp.DrawTo(fSkillIcons[spbTimebomber], -1 * ResMod, 7 * ResMod);
 
     // Bomber is drawn resized
-    DrawAnimationFrameResized(fSkillIcons[spbBomber], EXPLOSION, 0, Rect(-2, 7, 15, 24));
+    DrawAnimationFrameResized(fSkillIcons[spbBomber], EXPLOSION, 0, Rect(-2, 7, 15, 22));
 
-    // Freezer is tricky - the goal is an outlined frozen lemming over a freezer explosion graphic
-    // Explosion graphic currently commented out
-    DrawAnimationFrame(fSkillIcons[spbFreezer], FROZEN, 0, 8, 21);
-    Outline(fSkillIcons[spbFreezer]);
+    // Freezer is tricky - the goal is an outlined frozen lemming over an ice cube
+    DrawAnimationFrame(fSkillIcons[spbFreezer], ICECUBE, 0, 8, 20);
+    DrawAnimationFrame(fSkillIcons[spbFreezer], FROZEN, 0, 7, 21);
     TempBmp.Assign(fSkillIcons[spbFreezer]);
     fSkillIcons[spbFreezer].Clear(0);
-    //DrawAnimationFrameResized(fSkillIcons[spbFreezer], FREEZEREXPLOSION, 0, Rect(-2, 7, 15, 24));
     TempBmp.DrawTo(fSkillIcons[spbFreezer], 0, 0);
 
     // Blocker is simple
-    DrawAnimationFrame(fSkillIcons[spbBlocker], BLOCKING, 0, 7, 21);
+    DrawAnimationFrame(fSkillIcons[spbBlocker], BLOCKING, 4, 7, 20);
 
     // Platformer, Builder and Stacker have bricks drawn to clarify the direction of building.
     // Platformer additionally has some extra black pixels drawn in to make the outline nicer.
-    DrawAnimationFrame(fSkillIcons[spbPlatformer], PLATFORMING, 1, 7, 20);
-    fSkillIcons[spbPlatformer].FillRect(2 * ResMod, 21 * ResMod, 12 * ResMod, 22 * ResMod, $FF000000);
-    DrawBrick(fSkillIcons[spbPlatformer], 2, 21);
-    DrawBrick(fSkillIcons[spbPlatformer], 5, 21);
-    DrawBrick(fSkillIcons[spbPlatformer], 8, 21);
-    DrawBrick(fSkillIcons[spbPlatformer], 11, 21);
+    DrawAnimationFrame(fSkillIcons[spbPlatformer], PLATFORMING, 1, 7, 19);
+    fSkillIcons[spbPlatformer].FillRect(2 * ResMod, 21 * ResMod, 12 * ResMod, 21 * ResMod, $FF000000);
+    DrawBrick(fSkillIcons[spbPlatformer], 2, 20);
+    DrawBrick(fSkillIcons[spbPlatformer], 5, 20);
+    DrawBrick(fSkillIcons[spbPlatformer], 8, 20);
+    DrawBrick(fSkillIcons[spbPlatformer], 11, 20);
 
-    DrawAnimationFrame(fSkillIcons[spbBuilder], BRICKLAYING, 1, 7, 20);
-    DrawBrick(fSkillIcons[spbBuilder], 4, 22);
-    DrawBrick(fSkillIcons[spbBuilder], 6, 21);
-    DrawBrick(fSkillIcons[spbBuilder], 8, 20);
-    DrawBrick(fSkillIcons[spbBuilder], 10, 19);
+    DrawAnimationFrame(fSkillIcons[spbBuilder], BRICKLAYING, 1, 7, 19);
+    DrawBrick(fSkillIcons[spbBuilder], 4, 21);
+    DrawBrick(fSkillIcons[spbBuilder], 6, 20);
+    DrawBrick(fSkillIcons[spbBuilder], 8, 19);
+    DrawBrick(fSkillIcons[spbBuilder], 10, 18);
 
-    DrawAnimationFrame(fSkillIcons[spbStacker], STACKING, 0, 7, 21);
-    DrawBrick(fSkillIcons[spbStacker], 10, 20);
+    DrawAnimationFrame(fSkillIcons[spbStacker], STACKING, 0, 7, 20);
     DrawBrick(fSkillIcons[spbStacker], 10, 19);
     DrawBrick(fSkillIcons[spbStacker], 10, 18);
     DrawBrick(fSkillIcons[spbStacker], 10, 17);
+    DrawBrick(fSkillIcons[spbStacker], 10, 16);
 
     // Projectiles are messy.
     if GameParams.HighResolution then
@@ -777,19 +765,19 @@ begin
 
     DoProjectileRecolor(TempBMP, BrickColor);
 
-    DrawMiscBmp(TempBMP, fSkillIcons[spbSpearer], 2, 8, PROJECTILE_GRAPHIC_RECTS[pgSpearSlightBLTR]);
-    DrawMiscBmp(TempBMP, fSkillIcons[spbGrenader], 10, 8, PROJECTILE_GRAPHIC_RECTS[pgGrenade]);
+    DrawMiscBmp(TempBMP, fSkillIcons[spbSpearer], 2, 7, PROJECTILE_GRAPHIC_RECTS[pgSpearSlightBLTR]);
+    DrawMiscBmp(TempBMP, fSkillIcons[spbGrenader], 10, 7, PROJECTILE_GRAPHIC_RECTS[pgGrenade]);
 
-    DrawAnimationFrame(fSkillIcons[spbSpearer], THROWING, 2, 6, 21);
-    DrawAnimationFrame(fSkillIcons[spbGrenader], THROWING, 3, 3, 21);
+    DrawAnimationFrame(fSkillIcons[spbSpearer], THROWING, 2, 6, 20);
+    DrawAnimationFrame(fSkillIcons[spbGrenader], THROWING, 3, 3, 20);
 
     // Laserer, Basher, Fencer, Miner are all simple - we do have to take care to avoid frames with destruction particles
     // For Digger, we just have to accept some particles.
-    DrawAnimationFrame(fSkillIcons[spbLaserer], LASERING, 0, 8, 21);
-    DrawAnimationFrame(fSkillIcons[spbBasher], BASHING, 0, 8, 21);
-    DrawAnimationFrame(fSkillIcons[spbFencer], FENCING, 1, 7, 21);
-    DrawAnimationFrame(fSkillIcons[spbMiner], MINING, 12, 4, 21);
-    DrawAnimationFrame(fSkillIcons[spbDigger], DIGGING, 4, 7, 21);
+    DrawAnimationFrame(fSkillIcons[spbLaserer], LASERING, 0, 8, 20);
+    DrawAnimationFrame(fSkillIcons[spbBasher], BASHING, 0, 8, 20);
+    DrawAnimationFrame(fSkillIcons[spbFencer], FENCING, 1, 7, 20);
+    DrawAnimationFrame(fSkillIcons[spbMiner], MINING, 12, 4, 20);
+    DrawAnimationFrame(fSkillIcons[spbDigger], DIGGING, 4, 7, 20);
 
     // And finally, outline everything. We generate the cloner after this, as it makes use of
     // the post-outlined Walker graphic.
@@ -799,7 +787,7 @@ begin
         // Swimmer and Cloner are already outlined during their generation.
 
     // Cloner is drawn as two back-to-back walkers, individually outlined.
-    DrawAnimationFrame(fSkillIcons[spbCloner], WALKING_RTL, 1, 6, 21);
+    DrawAnimationFrame(fSkillIcons[spbCloner], WALKING_RTL, 1, 6, 20);
     Outline(fSkillIcons[spbCloner]);
     TempBmp.Assign(fSkillIcons[spbWalker]);
     TempBmp.DrawTo(fSkillIcons[spbCloner], 2, 0); // We want it drawn 2px to the right of where it is in the walker icon
@@ -934,6 +922,36 @@ begin
   LoadPanelFont;
   LoadSkillIcons;
   LoadSkillFont;
+end;
+
+procedure TBaseSkillPanel.PlayReleaseRateSound;
+//  Minimum Freq = 3300 (we don't want to go lower than this)
+//  Original Freq = 7418 (original frequency of SFX_CHANGE_RR)
+//  Maximum Freq = 24000 (we don't want to go higher than this)
+//  Minimum RR = 1 (SI 102)
+//  Maximum RR = 99 (SI 4)
+var
+  RR: Integer;
+  MagicFrequencyAmiga: Single;
+  //MagicFrequencyCalculatedByWillAndEric: Single;
+begin
+  //stops the sound cueing during backwards framesteps
+  if Game.IsBackstepping
+    //unless the change is at the current frame
+    and not (Game.ReplayManager.HasRRChangeAt(Game.CurrentIteration)) then Exit;
+
+  if Game.SpawnIntervalChanged then
+  begin
+    RR := (103 - Game.CurrentSpawnInterval);
+
+    //Linear pitch slide
+    //MagicFrequencyCalculatedByWillAndEric := 210 * RR + 3300;
+
+    //Logarithmic pitch slide modelled on Amiga
+    MagicFrequencyAmiga := 3300 * (Power(1.02, RR));
+
+    SoundManager.PlaySound(SFX_CHANGE_RR, 0, MagicFrequencyAmiga);
+  end;
 end;
 
 procedure TBaseSkillPanel.PrepareForGame;
@@ -1096,7 +1114,7 @@ begin
     ButtonPos := Game.GetSelectedSkill + 1;
 
                    //pitch             //this makes sure the interval is 1 semitone
-    MagicFrequency := 6900 * (IntPower(1.06, ButtonPos));
+    MagicFrequency := 6900 * (IntPower(1.0595, ButtonPos));
                    //matches Amiga - lower might be better for levels with more skills?
     if (fLastHighlitSkill <> spbNone) and (fLastHighlitSkill <> fHighlitSkill) then
     SoundManager.PlaySound(SFX_SKILLBUTTON, 0, MagicFrequency);
@@ -1325,6 +1343,7 @@ begin
 
     DrawSkillCount(spbSlower, GetSpawnIntervalValue(Level.Info.SpawnInterval));
     DrawSkillCount(spbFaster, GetSpawnIntervalValue(Game.CurrentSpawnInterval));
+    PlayReleaseRateSound;
 
     // Highlight selected button
     if fHighlitSkill <> Game.RenderInterface.SelectedSkill then
@@ -1552,6 +1571,9 @@ begin
   case aButton of
     spbSlower:
       begin
+        DrawButtonSelector(spbSlower, true);
+        Game.IsBackstepping := False;
+
         if GameParams.ClassicMode then //deactivates min/max RR jumping in ClassicMode
           begin
             Game.SetSelectedSkill(i, True);
@@ -1560,6 +1582,9 @@ begin
       end;
     spbFaster:
       begin
+        DrawButtonSelector(spbFaster, true);
+        Game.IsBackstepping := False;
+
         if GameParams.ClassicMode then //deactivates min/max RR jumping in ClassicMode
           begin
             Game.SetSelectedSkill(i, True);
@@ -1568,10 +1593,16 @@ begin
       end;
     spbPause:
       begin
+        if RewindPressed then fRewindPressed := False;
+
         if fGameWindow.GameSpeed = gspPause then
-        fGameWindow.GameSpeed := gspNormal
-        else
-        fGameWindow.GameSpeed := gspPause;
+        begin
+         fGameWindow.GameSpeed := gspNormal;
+         Game.IsBackstepping := False;
+        end else begin
+         fGameWindow.GameSpeed := gspPause;
+         Game.IsBackstepping := True;
+        end;
       end;
     spbNuke:
       begin
@@ -1585,20 +1616,34 @@ begin
       end;
     spbFastForward:
       begin
+        if RewindPressed then fRewindPressed := False;
+
+        if Game.IsBackstepping then Game.IsBackstepping := False;
+
         if fGameWindow.GameSpeed = gspFF then
           fGameWindow.GameSpeed := gspNormal
-        else if fGameWindow.GameSpeed in [gspNormal, gspSlowMo, gspPause, gspRewind] then
+        else if fGameWindow.GameSpeed in [gspNormal, gspSlowMo, gspPause] then
           fGameWindow.GameSpeed := gspFF;
       end;
     spbRewind:
       begin
-        if fGameWindow.GameSpeed = gspRewind then
-          fGameWindow.GameSpeed := gspNormal
-        else if fGameWindow.GameSpeed in [gspNormal, gspSlowMo, gspPause, gspFF] then
-          fGameWindow.GameSpeed := gspRewind;
+        if fGameWindow.GameSpeed in [gspFF, gspPause, gspSlowMo] then
+          fGameWindow.GameSpeed := gspNormal;
+
+        if not RewindPressed then
+        begin
+          fRewindPressed := True;
+          Game.IsBackstepping := True;
+        end else if RewindPressed then
+        begin
+          fRewindPressed := False;
+          Game.IsBackstepping := False;
+        end;
       end;
     spbRestart:
       begin
+        DrawButtonSelector(spbRestart, true);
+
         if GameParams.ClassicMode or not GameParams.ReplayAfterRestart then // cancels Replay after Restart in ClassicMode
           begin
             Game.CancelReplayAfterSkip := true;
@@ -1634,6 +1679,9 @@ procedure TBaseSkillPanel.ImgMouseUp(Sender: TObject; Button: TMouseButton;
 begin
   Game.SetSelectedSkill(spbSlower, False);
   Game.SetSelectedSkill(spbFaster, False);
+  DrawButtonSelector(spbSlower, false);
+  DrawButtonSelector(spbFaster, false);
+  DrawButtonSelector(spbRestart, false);
 end;
 
 procedure TBaseSkillPanel.MinimapMouseDown(Sender: TObject; Button: TMouseButton;
@@ -1674,16 +1722,27 @@ begin
   DrawMinimap;
 end;
 
-
-function TBaseSkillPanel.CheckFrameSkip: Integer;
+function TBaseSkillPanel.CursorOverClickableItem: Boolean;
 var
+  CursorPos: TPoint;
   P: TPoint;
+  Button: TSkillPanelButton;
 begin
-  Result := 0;
-  if GetTickCount - fLastClickFrameskip < 250 then Exit;
-  if GetKeyState(VK_LBUTTON) >= 0 then Exit;
+  CursorPos := Mouse.CursorPos;
 
-  P := Image.ControlToBitmap(Image.ScreenToClient(Mouse.CursorPos));
+  for Button := Low(fButtonRects) to High(fButtonRects) do
+  begin
+    P := Image.ControlToBitmap(Image.ScreenToClient(CursorPos));
+    //Check if the cursor is over a panel button or the minimap
+    if PtInRect(fButtonRects[Button], P)
+    or PtInRect(MinimapRect, P) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+
+  Result := False;
 end;
 
 {-----------------------------------------

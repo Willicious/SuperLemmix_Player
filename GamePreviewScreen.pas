@@ -58,10 +58,7 @@ type
 implementation
 
 uses
-  CustomPopup,
-  FBaseDosForm,
-  FLevelInfo,
-  FStyleManager;
+  CustomPopup, FBaseDosForm, FLevelInfo, FStyleManager;
 
 const
   TALISMAN_PADDING = 8;
@@ -259,7 +256,7 @@ begin
       NewRegion := MakeClickableText(Point(FS_FOOTER_THREE_OPTIONS_X_MID, FOOTER_OPTIONS_TWO_ROWS_LOW_Y), SOptionLevelSelect, DoLevelSelect);
     if not GameParams.ShowMinimap and not GameParams.FullScreen then
       NewRegion := MakeClickableText(Point(FOOTER_THREE_OPTIONS_X_MID, FOOTER_OPTIONS_TWO_ROWS_LOW_Y), SOptionLevelSelect, DoLevelSelect);
-    NewRegion.ShortcutKeys.Add(VK_F2);
+    NewRegion.ShortcutKeys.Add(VK_F3);
 
     if GameParams.ShowMinimap and not GameParams.FullScreen then
       NewRegion := MakeClickableText(Point(MM_FOOTER_THREE_OPTIONS_X_LEFT, FOOTER_OPTIONS_TWO_ROWS_LOW_Y), SOptionLoadReplay, TryLoadReplay);
@@ -271,7 +268,7 @@ begin
 
     MakeHiddenOption(VK_SPACE, BeginPlay);
     MakeHiddenOption(VK_RETURN, BeginPlay);
-    MakeHiddenOption(VK_F3, ShowConfigMenu);
+    MakeHiddenOption(VK_F2, ShowConfigMenu);
     MakeHiddenOption(VK_LEFT, PreviousLevel);
     MakeHiddenOption(VK_RIGHT, NextLevel);
     MakeHiddenOption(VK_DOWN, PreviousRank);
@@ -371,7 +368,7 @@ begin
   Result[1].Line := Entry.Group.Name;
   if Entry.Group.Parent = nil then
   begin
-    Result[1].Line := 'Levels'
+    Result[1].Line := 'Miscellaneous Levels'
   end else
   begin
     if Entry.Group.IsOrdered then
@@ -383,20 +380,28 @@ begin
   Result[2].yPos := Result[1].yPos + LINE_Y_SPACING;
   if (Level.Info.NeutralCount > 0) or (Level.Info.ZombieCount > 0) then
   begin
+    if Level.Info.LemmingsCount = 1 then
     Result[2].Line := Result[2].Line + IntToStr(Level.Info.LemmingsCount
-                                               - Level.Info.ZombieCount
-                                               - Level.Info.NeutralCount) + ' Lemmings + ';
+                                     - Level.Info.ZombieCount - Level.Info.NeutralCount)
+                                     + ' ' + GameParams.Renderer.Theme.LemNamesSingular
+    else if Level.Info.LemmingsCount > 1 then
+    Result[2].Line := Result[2].Line + IntToStr(Level.Info.LemmingsCount
+                                     - Level.Info.ZombieCount - Level.Info.NeutralCount)
+                                     + ' ' + GameParams.Renderer.Theme.LemNamesPlural;
 
-    if Level.Info.NeutralCount > 0 then
-    Result[2].Line := Result[2].Line + IntToStr(Level.Info.NeutralCount) + ' Neutrals';
+    if (Level.Info.NeutralCount = 1) then
+    Result[2].Line := Result[2].Line + ', ' + IntToStr(Level.Info.NeutralCount) + ' Neutral'
+    else if (Level.Info.NeutralCount > 1) then
+    Result[2].Line := Result[2].Line + ', ' + IntToStr(Level.Info.NeutralCount) + ' Neutrals';
 
-    if (Level.Info.NeutralCount > 0) and (Level.Info.ZombieCount > 0) then
-    Result[2].Line := Result[2].Line + ', ';
-
-    if Level.Info.ZombieCount > 0 then
-    Result[2].Line := Result[2].Line + IntToStr(Level.Info.ZombieCount) + ' Zombies';
-  end else
-  Result[2].Line := IntToStr(Level.Info.LemmingsCount) + SPreviewLemmings;;
+    if (Level.Info.ZombieCount = 1) then
+    Result[2].Line := Result[2].Line + ', ' + IntToStr(Level.Info.ZombieCount) + ' Zombie'
+    else if (Level.Info.ZombieCount > 1) then
+    Result[2].Line := Result[2].Line + ', ' + IntToStr(Level.Info.ZombieCount) + ' Zombies';
+  end else if Level.Info.LemmingsCount = 1 then
+  Result[2].Line := IntToStr(Level.Info.LemmingsCount) + ' ' + GameParams.Renderer.Theme.LemNamesSingular
+  else
+  Result[2].Line := IntToStr(Level.Info.LemmingsCount) + ' ' + GameParams.Renderer.Theme.LemNamesPlural;
   Result[2].ColorShift := HueShift;
 
   HueShift.HShift := RESCUE_LEMS_SHIFT;
@@ -420,7 +425,7 @@ begin
     Result[5].Line := SPreviewTimeLimit + IntToStr(Level.Info.TimeLimit div 60) + ':'
                     + LeadZeroStr(Level.Info.TimeLimit mod 60, 2);
   end else
-  Result[5].Line := 'Infinite Time';      //hotbookmark
+  Result[5].Line := 'Infinite Time';
   Result[5].ColorShift := HueShift;
 
   HueShift.HShift := AUTHOR_SHIFT;

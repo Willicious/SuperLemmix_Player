@@ -58,6 +58,7 @@ type
     RenderInfoRec       : TRenderInfoRec;
     fTheme              : TNeoTheme;
     fHelperImages       : THelperImages;
+    fVisualSFXImages    : TVisualSFXImages;
     fAni                : TBaseAnimationSet;
     fBgColor            : TColor32;
     fParticles          : TParticleTable; // all particle offsets
@@ -69,7 +70,8 @@ type
     fFixedDrawColor: TColor32; // must use with CombineFixedColor pixel combine
     fPhysicsRenderingType: TPhysicsRenderingType;
 
-    fHelpersAreHighRes: Boolean;
+    fHelpersAreHighRes:   Boolean;
+    fVisualSFXAreHighRes: Boolean;
 
     // Add stuff
     procedure AddTerrainPixel(X, Y: Integer; Color: TColor32);
@@ -123,6 +125,7 @@ type
     property Recolorer: TRecolorImage read GetRecolorer;
   protected
   public
+    fIsFreezerExplosion: Boolean;
     constructor Create;
     destructor Destroy; override;
 
@@ -132,6 +135,7 @@ type
     procedure DrawLevel(aDst: TBitmap32; aRegion: TRect; aClearPhysics: Boolean = false); overload;
 
     procedure LoadHelperImages;
+    procedure LoadVisualSFXImages;
     procedure LoadProjectileImages;
 
     function FindGadgetMetaInfo(O: TGadgetModel): TGadgetMetaAccessor;
@@ -151,6 +155,9 @@ type
     procedure DrawObjectHelpers(Dst: TBitmap32; Gadget: TGadget);
     procedure DrawHatchSkillHelpers(Dst: TBitmap32; Gadget: TGadget; DrawOtherHelper: Boolean);
     procedure DrawLemmingHelpers(Dst: TBitmap32; L: TLemming; IsClearPhysics: Boolean = true);
+
+    // VisualSFX rendering
+    procedure DrawVisualSFX(Dst: TBitmap32; Gadget: TGadget; Lemming: TLemming);
 
     // Lemming rendering
     procedure DrawLemmings(UsefulOnly: Boolean = false);
@@ -172,6 +179,7 @@ type
     procedure DrawMinerShadow(L: TLemming);
     procedure DrawDiggerShadow(L: TLemming);
     procedure DrawExploderShadow(L: TLemming);
+    procedure DrawFreezerShadow(L: TLemming);
     procedure DrawProjectileShadow(L: TLemming);
     procedure DrawProjectionShadow(L: TLemming); //bookmark - deprecated, need to remove associated code
     procedure ClearShadows;
@@ -206,6 +214,9 @@ implementation
 uses
   SharedGlobals,
   GameControl;
+
+var                     //hotbookmark
+  fStartTime: Cardinal; //used to set start time for drawing VisualSFX
 
 { TRenderer }
 
@@ -461,7 +472,7 @@ begin
   if (Selected and aLemming.CannotReceiveSkills) or UsefulOnly or
      ((fRenderInterface <> nil) and fRenderInterface.IsStartingSeconds) then
   begin
-    DrawLemmingHelpers(fLayers[rlObjectHelpers], aLemming, UsefulOnly);
+    if not GameParams.HideHelpers then DrawLemmingHelpers(fLayers[rlObjectHelpers], aLemming, UsefulOnly);
     fLayers.fIsEmpty[rlObjectHelpers] := false;
   end;
 
@@ -701,6 +712,9 @@ begin
     begin
       X := L.LemX + X;
       Y := L.LemY + Y;
+      if fIsFreezerExplosion then
+      fLayers[rlParticles].PixelS[X, Y] := PARTICLE_FREEZER_COLORS[i mod 8]
+      else
       fLayers[rlParticles].PixelS[X, Y] := PARTICLE_COLORS[i mod 8];
     end;
   end;
@@ -913,6 +927,11 @@ begin
     spbBomber:
       begin
         DrawExploderShadow(CopyL);
+      end;
+
+    spbFreezer:
+      begin
+        DrawFreezerShadow(CopyL);
       end;
 
     spbGlider:
@@ -1490,6 +1509,37 @@ begin
   end;
 end;
 
+procedure TRenderer.DrawFreezerShadow(L: TLemming);
+const
+  // This encodes only the left half of the freezer mask. The rest is obtained by mirroring it
+  FreezerShadow: array[0..52, 0..1] of Integer = (
+     (-1, -1), (-1, -2), (-1, -3), (-1, -4), (-1, -5), (-1, -6),
+     (-1, -7), (-1, -8), (-1, -9), (-1, -10), (-1, -11),
+     (-2, -1), (-2, -2), (-2, -3), (-2, -4), (-2, -5), (-2, -6),
+     (-2, -7), (-2, -8), (-2, -9), (-2, -10), (-2, -11),
+     (-3, -1), (-3, -2), (-3, -3), (-3, -4), (-3, -5), (-3, -6),
+     (-3, -7), (-3, -8), (-3, -9), (-3, -10), (-3, -11),
+     (-4, -1), (-4, -2), (-4, -3), (-4, -4), (-4, -5), (-4, -6),
+     (-4, -7), (-4, -8), (-4, -9), (-4, -10), (-4, -11),
+     (-5, -2), (-5, -3), (-5, -4), (-5, -5), (-5, -6),
+     (-5, -7), (-5, -8), (-5, -9), (-5, -10)
+   );
+var
+  i: Integer;
+  PosX: Integer;
+begin
+  fLayers.fIsEmpty[rlLowShadows] := False;
+
+  PosX := L.LemX;
+  if L.LemDx = 1 then Inc(PosX);
+
+  for i := 0 to Length(FreezerShadow) - 1 do
+  begin
+    SetLowShadowPixel(PosX + FreezerShadow[i, 0], L.LemY + FreezerShadow[i, 1]);
+    SetLowShadowPixel(PosX - FreezerShadow[i, 0] - 1, L.LemY + FreezerShadow[i, 1]);
+  end;
+end;
+
 procedure TRenderer.DrawProjectileShadow(L: TLemming);
 const
   ARR_BASE_LEN = 1024;
@@ -1518,8 +1568,8 @@ var
 
   function IsOutOfBounds: Boolean;
   begin
-    Result := (Proj.X < -8) or (Proj.X >= LevelWidth + 8) or
-              (Proj.Y < -8) or (Proj.Y >= LevelHeight + 8);
+    Result := (Proj.X < -108) or (Proj.X >= LevelWidth + 108) or
+              (Proj.Y < -108) or (Proj.Y >= LevelHeight + 108);
   end;
 begin
   fLayers.fIsEmpty[rlLowShadows] := False;
@@ -1703,9 +1753,9 @@ end;
 
 procedure TRenderer.AddFreezer(X, Y: Integer);
 begin
-  fAni.LemmingAnimations[FROZEN].DrawMode := dmCustom;
-  fAni.LemmingAnimations[FROZEN].OnPixelCombine := CombineTerrainNoOverwrite;
-  fAni.LemmingAnimations[FROZEN].DrawTo(fLayers[rlTerrain], X * ResMod, Y * ResMod);
+  fAni.LemmingAnimations[ICECUBE].DrawMode := dmCustom;
+  fAni.LemmingAnimations[ICECUBE].OnPixelCombine := CombineTerrainNoOverwrite;
+  fAni.LemmingAnimations[ICECUBE].DrawTo(fLayers[rlTerrain], X * ResMod, Y * ResMod);
 end;
 
 function TRenderer.FindGadgetMetaInfo(O: TGadgetModel): TGadgetMetaAccessor;
@@ -2224,14 +2274,42 @@ begin
 end;
 
 
+procedure TRenderer.DrawVisualSFX(Dst: TBitmap32; Gadget: TGadget; Lemming: TLemming);
+//var
+//  MO: TGadgetMetaAccessor;
+//  DrawX, DrawY: Integer;
+//  ElapsedTime: Cardinal;
+begin
+//  MO := Gadget.MetaObj;
+//
+//  // Set base drawing position
+//  DrawX := (Gadget.Left + (Gadget.Width div 4)) * ResMod;
+//  DrawY := (Gadget.TriggerRect.Top) * ResMod;
+//
+//  ElapsedTime := GetTickCount - fStartTime; //fStartTime set during Create procedure for now
+                                              //this does make the graphic only display for 4000ms
+                                              //but, it starts it from the preview screen
+                                              //so - we need to find a way to start displaying the
+                                              //graphic when it's actually relevant
+//
+//  // Draw image if less than 4 seconds have passed
+//  if GetTickCount - fStartTime < 4000 then  //works (ish), but we need to be able to set the start time correctly
+//  begin
+//    case MO.TriggerEffect of
+//      DOM_WINDOW:
+//      begin
+//        fVisualSFXImages[vfx_letsgo].DrawTo(Dst, Dst.Width div 2 -(25 * ResMod), Dst.Height div 2);
+//      end;
+//    end;
+//  end;
+end;
+
+
 procedure TRenderer.DrawObjectHelpers(Dst: TBitmap32; Gadget: TGadget);
 var
   MO: TGadgetMetaAccessor;
-
   DrawX, DrawY: Integer;
 begin
-  if not GameParams.HideHelpers then
-  begin
     Assert(Dst = fLayers[rlObjectHelpers], 'Object Helpers not written on their layer');
 
     MO := Gadget.MetaObj;
@@ -2354,8 +2432,17 @@ begin
         begin
           fHelperImages[hpi_Water].DrawTo(Dst, DrawX - 16 * ResMod, DrawY);
         end;
+
+      DOM_BLASTICINE:
+        begin
+          fHelperImages[hpi_Blasticine].DrawTo(Dst, DrawX - 16 * ResMod, DrawY);
+        end;
+
+      DOM_VINEWATER:
+        begin
+          fHelperImages[hpi_Vinewater].DrawTo(Dst, DrawX - 16 * ResMod, DrawY);
+        end;
     end;
-  end;
 end;
 
 procedure TRenderer.DrawHatchSkillHelpers(Dst: TBitmap32; Gadget: TGadget; DrawOtherHelper: Boolean);
@@ -2363,8 +2450,6 @@ var
   numHelpers, indexHelper: Integer;
   DrawX, DrawY: Integer;
 begin
-  if not GameParams.HideHelpers then
-  begin
     Assert(Dst = fLayers[rlObjectHelpers], 'Object Helpers not written on their layer');
     Assert(Gadget.TriggerEffectBase = DOM_WINDOW, 'Hatch helper icons called for other object type');
 
@@ -2434,7 +2519,6 @@ begin
     begin
       fHelperImages[hpi_Skill_Disarmer].DrawTo(Dst, DrawX + indexHelper * 10 * ResMod, DrawY);
     end;
-  end;
 end;
 
 
@@ -2446,8 +2530,6 @@ const
   DRAW_ABOVE_MIN_Y = 19;
   DRAW_ABOVE_MIN_Y_CPM = 28;
 begin
-  if not GameParams.HideHelpers then
-  begin
     Assert(Dst = fLayers[rlObjectHelpers], 'Object Helpers not written on their layer');
     //Assert(isClearPhysics or L.LemIsZombie, 'Lemmings helpers drawn for non-zombie while not in clear-physics mode'); // why?
 
@@ -2514,7 +2596,6 @@ begin
     begin
       fHelperImages[hpi_Skill_Disarmer].DrawTo(Dst, DrawX + indexHelper * 10 * ResMod, DrawY);
     end;
-  end;
 end;
 
 procedure TRenderer.ProcessDrawFrame(Gadget: TGadget; Dst: TBitmap32);
@@ -2531,7 +2612,7 @@ var
     fLayers.fIsEmpty[rlObjectHelpers] := false;
   end;
 
-  procedure DrawNumberWithCountdownDigits(X, Y: Integer; aDigitString: String; aAlignment: Integer = -1); // negative = left; zero = center; positive = right
+  procedure DrawNumberWithHatchNumbers(X, Y: Integer; aDigitString: String; aAlignment: Integer = -1); // negative = left; zero = center; positive = right
   var
     DigitsWidth: Integer;
 
@@ -2551,7 +2632,7 @@ var
 
     Y := Y - 2; // to center
 
-    DigitsWidth := Length(aDigitString) * 6;
+    DigitsWidth := Length(aDigitString) * 5;
     if aAlignment < 0 then
       CurX := X
     else if aAlignment > 0 then
@@ -2562,19 +2643,19 @@ var
     for n := 1 to Length(aDigitString) do
     begin
       Digit := StrToInt(aDigitString[n]);
-      SrcRect := SizedRect(Digit * 6 * ResMod, 0, 6 * ResMod, 5 * ResMod);
+      SrcRect := SizedRect(Digit * 4 * ResMod, 0, 4 * ResMod, 5 * ResMod);
 
-      fAni.CountDownDigitsBitmap.DrawMode := dmCustom;
-      fAni.CountDownDigitsBitmap.OnPixelCombine := CombineFixedColor;
+      fAni.HatchNumbersBitmap.DrawMode := dmCustom;
+      fAni.HatchNumbersBitmap.OnPixelCombine := CombineFixedColor;
       fFixedDrawColor := $FF202020;
-      fAni.CountDownDigitsBitmap.DrawTo(LocalDst, CurX * ResMod - 1, Y * ResMod + 1, SrcRect);
-      fAni.CountDownDigitsBitmap.DrawTo(LocalDst, CurX * ResMod, Y * ResMod, SrcRect);
-      fAni.CountDownDigitsBitmap.DrawTo(LocalDst, CurX * ResMod, Y * ResMod + 1, SrcRect);
+      fAni.HatchNumbersBitmap.DrawTo(LocalDst, CurX * ResMod - 1, Y * ResMod + 1, SrcRect);
+      fAni.HatchNumbersBitmap.DrawTo(LocalDst, CurX * ResMod, Y * ResMod, SrcRect);
+      fAni.HatchNumbersBitmap.DrawTo(LocalDst, CurX * ResMod, Y * ResMod + 1, SrcRect);
 
-      fAni.CountDownDigitsBitmap.DrawMode := dmBlend;
-      fAni.CountDownDigitsBitmap.CombineMode := cmMerge;
-      fAni.CountDownDigitsBitmap.DrawTo(LocalDst, CurX * ResMod - 1, Y * ResMod, SrcRect);
-      CurX := CurX + 7;
+      fAni.HatchNumbersBitmap.DrawMode := dmBlend;
+      fAni.HatchNumbersBitmap.CombineMode := cmMerge;
+      fAni.HatchNumbersBitmap.DrawTo(LocalDst, CurX * ResMod - 1, Y * ResMod, SrcRect);
+      CurX := CurX + 5;
     end;
 
     fFixedDrawColor := OldDrawColor;
@@ -2600,7 +2681,7 @@ var
 
     if Gadget.MetaObj.DigitAnimation = nil then
     begin
-      DrawNumberWithCountdownDigits(X, Y, DigitString, aAlignment);
+      DrawNumberWithHatchNumbers(X, Y, DigitString, aAlignment);
       Exit;
     end;
 
@@ -2704,36 +2785,33 @@ procedure TRenderer.LoadHelperImages;
 var
   i: THelperIcon;
 begin
-  if not GameParams.HideHelpers then
+  for i := Low(THelperIcon) to High(THelperIcon) do
   begin
-    for i := Low(THelperIcon) to High(THelperIcon) do
-    begin
-      if i = hpi_None then Continue;
-      if fHelperImages[i] <> nil then
-        fHelperImages[i].Free;
+    if i = hpi_None then Continue;
+    if fHelperImages[i] <> nil then
+      fHelperImages[i].Free;
 
-      fHelperImages[i] := TBitmap32.Create;
+    fHelperImages[i] := TBitmap32.Create;
 
-      if GameParams.HighResolution and FileExists(AppPath + SFGraphicsHelpersHighRes + HelperImageFilenames[i]) then
-        TPngInterface.LoadPngFile(AppPath + SFGraphicsHelpersHighRes + HelperImageFilenames[i], fHelperImages[i])
-      else if FileExists(AppPath + SFGraphicsHelpers + HelperImageFilenames[i]) then
-        TPngInterface.LoadPngFile(AppPath + SFGraphicsHelpers + HelperImageFilenames[i], fHelperImages[i]);
+    if GameParams.HighResolution and FileExists(AppPath + SFGraphicsHelpersHighRes + HelperImageFilenames[i]) then
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsHelpersHighRes + HelperImageFilenames[i], fHelperImages[i])
+    else if FileExists(AppPath + SFGraphicsHelpers + HelperImageFilenames[i]) then
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsHelpers + HelperImageFilenames[i], fHelperImages[i]);
 
-      fHelperImages[i].DrawMode := dmBlend;
-      fHelperImages[i].CombineMode := cmMerge;
-    end;
-
-    fHelperImages[hpi_Exit_Lock].DrawMode := dmCustom;
-    fHelperImages[hpi_Exit_Lock].OnPixelCombine := CombineFixedColor;
+    fHelperImages[i].DrawMode := dmBlend;
+    fHelperImages[i].CombineMode := cmMerge;
   end;
 
-    // And laserer!
-    if GameParams.HighResolution then
-      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'laser-hr.png', fLaserGraphic)
-    else
-      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'laser.png', fLaserGraphic);
+  fHelperImages[hpi_Exit_Lock].DrawMode := dmCustom;
+  fHelperImages[hpi_Exit_Lock].OnPixelCombine := CombineFixedColor;
 
-    fHelpersAreHighRes := GameParams.HighResolution;
+  // And laserer!
+  if GameParams.HighResolution then
+    TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'laser-hr.png', fLaserGraphic)
+  else
+    TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'laser.png', fLaserGraphic);
+
+  fHelpersAreHighRes := GameParams.HighResolution;
 end;
 
 procedure TRenderer.LoadProjectileImages;
@@ -2748,6 +2826,31 @@ begin
 
   fProjectileImage.DrawMode := dmCustom;
   fProjectileImage.OnPixelCombine := CombineTerrainNoOverwrite;
+end;
+
+procedure TRenderer.LoadVisualSFXImages;
+var
+  i: TVisualSFX;
+begin
+  for i := Low(TVisualSFX) to High(TVisualSFX) do
+  begin
+    if i = vfx_blank then Continue;
+    if fVisualSFXImages[i] <> nil then
+      fVisualSFXImages[i].Free;
+
+    fVisualSFXImages[i] := TBitmap32.Create;
+
+    if GameParams.HighResolution and FileExists(AppPath + SFVisualSFXHighRes + VisualSFXFilenames[i]) then
+      TPngInterface.LoadPngFile(AppPath + SFVisualSFXHighRes + VisualSFXFilenames[i], fVisualSFXImages[i])
+    else
+    if FileExists(AppPath + SFGraphicsHelpers + VisualSFXFilenames[i]) then
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsHelpers + VisualSFXFilenames[i], fVisualSFXImages[i]);
+
+    fVisualSFXImages[i].DrawMode := dmBlend;
+    fVisualSFXImages[i].CombineMode := cmMerge;
+  end;
+
+  fVisualSFXAreHighRes := GameParams.HighResolution;
 end;
 
 procedure TRenderer.DrawGadgetsOnLayer(aLayer: TRenderLayer);
@@ -2863,10 +2966,10 @@ begin
 
     fLayers.fIsEmpty[rlObjectHelpers] := false;
 
-    if Gadget.HasPreassignedSkills then
+    if Gadget.HasPreassignedSkills and not GameParams.HideHelpers then
       DrawHatchSkillHelpers(fLayers[rlObjectHelpers], Gadget, false);
 
-    if DrawOtherHatchHelper then
+    if DrawOtherHatchHelper and not GameParams.HideHelpers then
       DrawObjectHelpers(fLayers[rlObjectHelpers], Gadget);
 
     if fUsefulOnly then
@@ -2923,7 +3026,7 @@ begin
         Continue;
 
       // otherwise, draw its helper
-      DrawObjectHelpers(fLayers[rlObjectHelpers], Gadget);
+      if not GameParams.HideHelpers then DrawObjectHelpers(fLayers[rlObjectHelpers], Gadget);
       fLayers.fIsEmpty[rlObjectHelpers] := false;
 
       // if it's a teleporter or receiver, draw all paired helpers too
@@ -2931,7 +3034,7 @@ begin
         for i2 := 0 to Gadgets.Count-1 do
         begin
           if i = i2 then Continue;
-          if (Gadgets[i2].PairingId = Gadget.PairingId) then
+          if (Gadgets[i2].PairingId = Gadget.PairingId) and not GameParams.HideHelpers then
             DrawObjectHelpers(fLayers[rlObjectHelpers], Gadgets[i2]);
         end;
     end;
@@ -3039,12 +3142,13 @@ begin
   fAni := TBaseAnimationSet.Create;
   fPreviewGadgets := TGadgetList.Create;
   fTempLemmingList := TLemmingList.Create(false);
+  fStartTime := GetTickCount; //hotbookmark - this seems to start the timer on the preview screen ???
 
   fLaserGraphic := TBitmap32.Create;
   fLaserGraphic.DrawMode := dmCustom;
   fLaserGraphic.OnPixelCombine := CombineFixedColor;
 
-  LoadHelperImages;
+  if not GameParams.HideHelpers then LoadHelperImages;
 
   FillChar(fParticles, SizeOf(TParticleTable), $80);
   S := TResourceStream.Create(HInstance, 'particles', 'lemdata');
@@ -3460,8 +3564,11 @@ var
 procedure TRenderer.PrepareGameRendering(aLevel: TLevel; NoOutput: Boolean = false);
 begin
 
-  if GameParams.HighResolution <> fHelpersAreHighRes then
+  if GameParams.HighResolution <> fHelpersAreHighRes and not GameParams.HideHelpers then
     LoadHelperImages;
+
+  if GameParams.HighResolution <> fVisualSFXAreHighRes then
+    LoadVisualSFXImages;
 
   RenderInfoRec.Level := aLevel;
 

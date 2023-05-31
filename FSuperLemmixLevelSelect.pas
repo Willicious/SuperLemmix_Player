@@ -47,6 +47,9 @@ type
     procedure btnCleanseLevelsClick(Sender: TObject);
     procedure btnCleanseOneClick(Sender: TObject);
     procedure btnClearRecordsClick(Sender: TObject);
+    procedure tvLevelSelectChange(Sender: TObject; Node: TTreeNode);
+    procedure tvLevelSelectKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
     fLastLevelPath: String;
 
@@ -457,9 +460,22 @@ begin
   end;
 end;
 
+procedure TFLevelSelect.tvLevelSelectChange(Sender: TObject; Node: TTreeNode);
+begin
+  SetInfo;
+end;
+
 procedure TFLevelSelect.tvLevelSelectClick(Sender: TObject);
 begin
   SetInfo;
+end;
+
+//when treeview is active, pressing return loads the currently selected level
+procedure TFLevelSelect.tvLevelSelectKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  btnOK.Click;
 end;
 
 procedure TFLevelSelect.SetInfo;
@@ -595,7 +611,7 @@ begin
     lblPosition.Caption := GetLevelPositionText;
 
     if L.Author <> '' then
-      lblAuthor.Caption := 'By ' + L.Author
+      lblAuthor.Caption := 'Author: ' + L.Author
     else
       lblAuthor.Caption := '';
 

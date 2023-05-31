@@ -16,6 +16,10 @@ const
   PARTICLE_FRAMECOUNT = 51;
   PARTICLE_COLORS: array[0..7] of TColor32 = ($FF4040E0, $FF00B000, $FFF0D0D0, $FFF02020,
                                               $C04040E0, $C000B000, $C0F0D0D0, $C0F02020);
+  PARTICLE_FREEZER_COLORS: array[0..4] of TColor32
+                                           //$80 is 50% transparency, $FF is 100%
+                                           = ($803D638E, $801562E0, $805C90F6,
+                                              $8082C2FF, $80D6EEEE);
 
   PM_SOLID       = $00000001;
   PM_STEEL       = $00000002;
@@ -122,12 +126,16 @@ type
                  hpi_num_1, hpi_num_inf,
                  hpi_ArrowLeft, hpi_ArrowRight, hpi_ArrowUp, hpi_ArrowDown, hpi_Exclamation,
                  hpi_Exit, hpi_Exit_Lock, hpi_Fire, hpi_Trap, hpi_Trap_Disabled, hpi_Updraft,
-                 hpi_Flipper, hpi_Button, hpi_Force, hpi_NoSplat, hpi_Splat, hpi_Water,
+                 hpi_Flipper, hpi_Button, hpi_Force, hpi_NoSplat, hpi_Splat,
+                 hpi_Water, hpi_Blasticine, hpi_Vinewater,
                  hpi_FallDist,
                  hpi_Skill_Zombie, hpi_Skill_Neutral, hpi_Skill_Slider, hpi_Skill_Climber,
                  hpi_Skill_Floater, hpi_Skill_Glider, hpi_Skill_Swimmer, hpi_Skill_Disarmer);
 
+  TVisualSFX = (vfx_blank, vfx_letsgo, vfx_chink, vfx_oops, vfx_yippee);
+
   THelperImages = array[Low(THelperIcon)..High(THelperIcon)] of TBitmap32;
+  TVisualSFXImages = array[Low(TVisualSFX)..High(TVisualSFX)] of TBitmap32;
 
   TRenderInterface = class // Used for communication between GameWindow, LemGame and LemRendering.
     private
@@ -242,6 +250,8 @@ const
                               'splat_no.png',
                               'splat.png',
                               'water.png',
+                              'blasticine.png',
+                              'vinewater.png',
                               'fall_distance.png',
                               'skill_zombie.png',
                               'skill_neutral.png',
@@ -251,6 +261,13 @@ const
                               'skill_glider.png',
                               'skill_swimmer.png',
                               'skill_disarmer.png');
+
+  VisualSFXFilenames: array[Low(TVisualSFX)..High(TVisualSFX)] of String =
+                             ('blank.png', //placeholder
+                              'letsgo.png',
+                              'chink.png',
+                              'oops.png',
+                              'yippee.png');
 implementation
 
 uses

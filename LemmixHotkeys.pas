@@ -33,6 +33,7 @@ type
                          lka_DirRight,
                          lka_ForceWalker,
                          lka_Cheat,
+                         //lka_InfiniteSkills,
                          lka_Skip,
                          lka_SpecialSkip,
                          lka_FastForward,
@@ -77,12 +78,12 @@ type
       fKeyFunctions: Array[0..MAX_KEY] of TLemmixHotkey;
       fDisableSaving: Boolean;
 
-      procedure LoadFile;
       function DoCheckForKey(aFunc: TLemmixHotkeyAction; aMod: Integer; CheckMod: Boolean): Boolean;
     public
       constructor Create;
       destructor Destroy; override;
       procedure ClearAllKeys;
+      procedure LoadFile;
       procedure SaveFile;
 
       procedure SetDefaultsClassic;
@@ -93,10 +94,12 @@ type
       function CheckKeyEffect(aKey: Word): TLemmixHotkey;
       function CheckForKey(aFunc: TLemmixHotkeyAction): Boolean; overload;
       function CheckForKey(aFunc: TLemmixHotkeyAction; aMod: Integer): Boolean; overload;
+      function CheckKeyAssigned(aFunc: TLemmixHotkeyAction; aKey: Integer): Boolean;
 
       class function InterpretMain(s: String): TLemmixHotkeyAction;
       class function InterpretSecondary(s: String): Integer;
       class function GetKeyNames(aUseHardcoded: Boolean): TKeyNameArray;
+
   end;
 
 implementation
@@ -133,7 +136,6 @@ begin
   SetKeyFunction($1B, lka_Exit);
   SetKeyFunction($05, lka_ZoomIn);
   SetKeyFunction($06, lka_ZoomOut);
-  SetKeyFunction($02, lka_Scroll);
   SetKeyFunction($4D, lka_Music);
   SetKeyFunction($53, lka_Sound);
   SetKeyFunction($41, lka_ShowAthleteInfo);
@@ -167,7 +169,6 @@ begin
   SetKeyFunction($1B, lka_Exit);
   SetKeyFunction($05, lka_ZoomIn);
   SetKeyFunction($06, lka_ZoomOut);
-  SetKeyFunction($02, lka_Scroll);
   SetKeyFunction($4D, lka_Music);
   SetKeyFunction($58, lka_Sound);
   SetKeyFunction($41, lka_ShowAthleteInfo);
@@ -185,7 +186,6 @@ begin
   SetKeyFunction($49, lka_FallDistance);
   SetKeyFunction($0D, lka_ReleaseMouse);
   SetKeyFunction($BA, lka_ShowUsedSkills);
-  SetKeyFunction($02, lka_Skip, -1);
   SetKeyFunction($08, lka_Skip, -25);
   SetKeyFunction($4A, lka_Skip, 20);
   SetKeyFunction($60, lka_Skip, 100);
@@ -196,6 +196,7 @@ begin
   SetKeyFunction($30, lka_SlowMotion);
   SetKeyFunction($BE, lka_SlowMotion);
   SetKeyFunction($2E, lka_Cheat);
+  //SetKeyFunction($2D, lka_InfiniteSkills);
   SetKeyFunction($56, lka_ClearPhysics, 1);
   SetKeyFunction($14, lka_ClearPhysics, 0);
   SetKeyFunction($4C, lka_LoadReplay);
@@ -243,7 +244,6 @@ begin
   SetKeyFunction($05, lka_ZoomIn);
   SetKeyFunction($06, lka_ZoomOut);
   SetKeyFunction($1B, lka_Exit);
-  SetKeyFunction($02, lka_Scroll);
   SetKeyFunction($75, lka_SaveReplay);
   SetKeyFunction($76, lka_LoadReplay);
   SetKeyFunction($11, lka_Highlight);
@@ -305,6 +305,7 @@ begin
   if s = 'dir_select_right' then Result := lka_DirRight;
   if s = 'force_walker' then Result := lka_ForceWalker;
   if s = 'cheat' then Result := lka_Cheat;
+  //if s = 'infinite_skills' then Result := lka_InfiniteSkills;
   if s = 'skip' then Result := lka_Skip;
   if s = 'special_skip' then Result := lka_SpecialSkip;
   if s = 'fastforward' then Result := lka_FastForward;
@@ -392,7 +393,7 @@ begin
     else if FileExists(AppPath + 'SuperLemmixHotkeys.ini') then
       StringList.LoadFromFile(AppPath + 'SuperLemmixHotkeys.ini')
     else begin
-      SetDefaultsClassic;
+      SetDefaultsAdvanced;
       Exit;
     end;
     for i := 0 to MAX_KEY do
@@ -426,7 +427,7 @@ begin
     on E: Exception do
     begin
       fDisableSaving := true;
-      SetDefaultsClassic;
+      SetDefaultsAdvanced;
       raise E;
     end;
   end;
@@ -458,6 +459,7 @@ var
       lka_DirRight:         Result := 'Dir_Select_Right';
       lka_ForceWalker:      Result := 'Force_Walker';
       lka_Cheat:            Result := 'Cheat';
+      //lka_InfiniteSkills:   Result := 'Infinite_Skills';
       lka_Skip:             Result := 'Skip';
       lka_SpecialSkip:      Result := 'Special_Skip';
       lka_FastForward:      Result := 'FastForward';
@@ -547,6 +549,12 @@ begin
     StringList.Free;
   end;
 end;
+
+function TLemmixHotkeyManager.CheckKeyAssigned(aFunc: TLemmixHotkeyAction; aKey: Integer): Boolean;
+begin
+  Result := (fKeyFunctions[aKey].Action = lka_Null);
+end;
+
 
 function TLemmixHotkeyManager.CheckKeyEffect(aKey: Word): TLemmixHotkey;
 begin
