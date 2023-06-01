@@ -780,11 +780,10 @@ begin
                        SoundManager.PlaySound(Msg.MessageDataStr);
       GAMEMSG_SOUND_BAL: if not IsHyperSpeed then
                            SoundManager.PlaySound(Msg.MessageDataStr,
-                           //bookmark - this needs to be checked, because the position isn't always correct
                            (Msg.MessageDataInt - Trunc(((Img.Width / 2) - Img.OffsetHorz) / Img.Scale)) div 2);
       GAMEMSG_MUSIC: SoundManager.PlayMusic;
-      GAMEMSG_SOUND_FREQ: if not IsHyperSpeed then   //bookmark - follow this train
-                           SoundManager.PlaySound(Msg.MessageDataStr, 0, Msg.MessageDataInt);
+      //GAMEMSG_SOUND_FREQ: if not IsHyperSpeed then   //bookmark - follow this train
+                          // SoundManager.PlaySound(Msg.MessageDataStr, 0, Msg.MessageDataInt);
     end;
   end;
 end;
@@ -1477,7 +1476,9 @@ begin
                         end;
                       end;
       lka_Cheat: Game.Cheat;
-      //lka_InfiniteSkills: Game.SetSkillsToInfinite;
+//      lka_InfiniteSkills: begin
+//                            Game.SetSkillsToInfinite;
+//                          end;
       lka_FastForward: begin
                          if SkillPanel.RewindPressed then SkillPanel.RewindPressed := False;
 
@@ -1731,7 +1732,7 @@ begin
     SetAdjustedGameCursorPoint(Img.ControlToBitmap(Point(X, Y)));
 
     CheckShifts(Shift);
-    Game.PlayAssignFailSound;
+    //Game.PlayAssignFailSound;
 
     // Middle or Right clicks get passed to the keyboard handler, because their
     // handling has more in common with that than with mouse handling

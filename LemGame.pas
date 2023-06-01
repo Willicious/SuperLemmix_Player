@@ -207,7 +207,6 @@ type
     fHighlightLemmingID        : Integer;
     fTargetLemmingID           : Integer; // for replay skill assignments
     fCancelReplayAfterSkip     : Boolean;
-    //fInfiniteSkills            : Boolean;
 
   { events }
     fParticleFinishTimer       : Integer; // extra frames to enable viewing of explosions
@@ -275,7 +274,7 @@ type
     procedure CheckUpdateNuking;
     procedure CueSoundEffect(aSound: String); overload;
     procedure CueSoundEffect(aSound: String; aOrigin: TPoint); overload;
-    procedure CueSoundEffectFrequency(aSound: String; aFrequency: Single);
+    //procedure CueSoundEffectFrequency(aSound: String; aFrequency: Single);
     function DigOneRow(PosX, PosY: Integer): Boolean;
     procedure DrawAnimatedGadgets;
     function HasPixelAt(X, Y: Integer): Boolean;
@@ -459,7 +458,7 @@ type
     function GetTargetLemming: TLemming;
     procedure CheckForNewShadow(aForceRedraw: Boolean = false);
     function SpawnIntervalChanged: Boolean;
-    procedure PlayAssignFailSound;
+    //procedure PlayAssignFailSound;
     //procedure SetSkillsToInfinite; //hotbookmark
 
   { properties }
@@ -487,7 +486,6 @@ type
     property IsHighlightHotkey: Boolean read fIsHighlightHotkey write fIsHighlightHotkey;
     property TargetIteration: Integer read fTargetIteration write fTargetIteration;
     property CancelReplayAfterSkip: Boolean read fCancelReplayAfterSkip write fCancelReplayAfterSkip;
-    //property InfiniteSkills: Boolean read fInfiniteSkills write fInfiniteSkills;
     property HitTestAutoFail: Boolean read fHitTestAutoFail write fHitTestAutoFail;
     property IsOutOfTime: Boolean read GetOutOfTime;
 
@@ -1130,23 +1128,23 @@ begin
   inherited Destroy;
 end;
 
-procedure TLemmingGame.PlayAssignFailSound;
-var
-L: TLemming;
-SelectedLemming: TLemming;
-
-begin
-  SelectedLemming := fRenderInterface.SelectedLemming;
-
-  //L deliberately not initialised to prevent infinite loop
-  if not (L = SelectedLemming) and not ProcessSkillAssignment(False) then
-  begin
-    if HasSteelAt(SelectedLemming.LemX, SelectedLemming.LemY) then
-      CueSoundEffect(SFX_HITS_STEEL, SelectedLemming.Position)
-    else
-      CueSoundEffect(SFX_ASSIGN_FAIL, SelectedLemming.Position);
-  end;
-end;
+//procedure TLemmingGame.PlayAssignFailSound;
+//var
+//L: TLemming;
+//SelectedLemming: TLemming;
+//
+//begin
+//  SelectedLemming := fRenderInterface.SelectedLemming;
+//
+//  //L deliberately not initialised to prevent infinite loop
+//  if not (L = SelectedLemming) and not ProcessSkillAssignment(False) then
+//  begin
+//    if HasSteelAt(SelectedLemming.LemX, SelectedLemming.LemY) then
+//      CueSoundEffect(SFX_HITS_STEEL, SelectedLemming.Position)
+//    else
+//      CueSoundEffect(SFX_ASSIGN_FAIL, SelectedLemming.Position);
+//  end;
+//end;
 
 procedure TLemmingGame.PlayMusic;
 begin
@@ -1260,9 +1258,6 @@ begin
     // Set available skills
     for Skill := Low(TSkillPanelButton) to High(TSkillPanelButton) do
       if SkillPanelButtonToAction[Skill] <> baNone then
-      //if InfiniteSkills then
-        //CurrSkillCount[SkillPanelButtonToAction[Skill]] := 100
-      //else
         CurrSkillCount[SkillPanelButtonToAction[Skill]] := SkillCount[Skill];
     // Initialize used skills
     for i := 0 to Integer(LAST_SKILL_BUTTON) do
@@ -1897,24 +1892,13 @@ end;
 //procedure TLemmingGame.SetSkillsToInfinite;
 //var
 //Skill: TSkillPanelButton;
-//Action: TBasicLemmingAction;
 //begin
-//if not InfiniteSkills then         //hotbookmark
+//  with Level.Info do
 //  begin
-//    InfiniteSkills := true;
 //    for Skill := Low(TSkillPanelButton) to High(TSkillPanelButton) do
-//    CurrSkillCount[SkillPanelButtonToAction[Skill]] := 100;
-//  end else begin
-//    InfiniteSkills := false;
-//    CurrSkillCount[SkillPanelButtonToAction[Skill]] := SkillCount[Skill];
+//    if SkillPanelButtonToAction[Skill] <> baNone then
+//        CurrSkillCount[SkillPanelButtonToAction[Skill]] := 100;
 //  end;
-//
-////  with Level.Info do
-////  begin
-////    for Skill := Low(TSkillPanelButton) to High(TSkillPanelButton) do
-////    if SkillPanelButtonToAction[Skill] <> baNone then
-////        CurrSkillCount[SkillPanelButtonToAction[Skill]] := 100;
-////  end;
 //end;
 
 //  SETTING SIZE OF OBJECT MAPS
@@ -6665,16 +6649,16 @@ begin
 end;
 
 //bookmark - follow this train
-procedure TLemmingGame.CueSoundEffectFrequency(aSound: String; aFrequency: Single);
-begin
-  if IsSimulating then Exit; // Not play sound in simulation mode
-
-  // Check that the sound was not yet played on this frame
-  if fSoundList.Contains(aSound) then Exit;
-
-  fSoundList.Add(aSound);
-  MessageQueue.Add(GAMEMSG_SOUND_FREQ, aSound, Int64(Trunc(aFrequency)));
-end;
+//procedure TLemmingGame.CueSoundEffectFrequency(aSound: String; aFrequency: Single);
+//begin
+//  if IsSimulating then Exit; // Not play sound in simulation mode
+//
+//  // Check that the sound was not yet played on this frame
+//  if fSoundList.Contains(aSound) then Exit;
+//
+//  fSoundList.Add(aSound);
+//  MessageQueue.Add(GAMEMSG_SOUND_FREQ, aSound, Int64(Trunc(aFrequency)));
+//end;
 
 function TLemmingGame.GetHighlitLemming: TLemming;
 begin
@@ -6723,7 +6707,7 @@ begin
   end;
 end;
 
-//hotbookmark - mimic this for writing infinite skills to replay
+
 procedure TLemmingGame.RecordNuke(aInsert: Boolean);
 var
   E: TReplayNuke;
@@ -7335,12 +7319,6 @@ function TLemmingGame.GetSkillCount(aSkill: TSkillPanelButton): Integer;
 begin
   if (aSkill < Low(TSkillPanelButton)) or (aSkill > LAST_SKILL_BUTTON) then
     Result := 0
-  //else if InfiniteSkills then
-    //Result := 100
-//  end else if HasBeenInfinite then
-//  begin
-//    Result := ((CurrSkillCount[SkillPanelButtonToAction[aSkill]] - 100)
-//    + (Level.Info.SkillCount[aSkill] - UsedSkillCount[SkillPanelButtonToAction[aSkill]]));
   else
     Result := CurrSkillCount[SkillPanelButtonToAction[aSkill]];
 end;
