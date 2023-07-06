@@ -1,0 +1,32 @@
+BASE
+
+$GROUP
+  NAME Fun
+  FOLDER Fun
+$END
+
+$GROUP
+  NAME Tricky
+  FOLDER Tricky
+$END
+
+$GROUP
+  NAME Taxing
+  FOLDER Taxing
+$END
+
+$GROUP
+  NAME Mayhem
+  FOLDER Mayhem
+$END
+
+$GROUP
+  NAME Bonus
+  FOLDER Bonus
+$END
+
+$GROUP
+  NAME 2-Player
+  FOLDER 2P
+$END
+

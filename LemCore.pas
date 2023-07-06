@@ -215,7 +215,10 @@ type
     trSplat,
     trZombie,
     trBlasticine,
-    trVinewater
+    trVinewater,
+    trPoison,
+    trRadiation,
+    trSlowfreeze
   );
 
 
@@ -337,7 +340,7 @@ const
 const
   // All objects that don't have trigger areas got mapped to trZombie
   // This only works as long as there are no object types that create Zombie fields!!!
-  ObjectTypeToTrigger: array[-1..37] of TTriggerTypes = (
+  ObjectTypeToTrigger: array[-1..38] of TTriggerTypes = (
     trZombie,                 // no-object
     trZombie,                 // no trigger area
     trExit,                   // exit
@@ -357,11 +360,11 @@ const
     trExit,                   // locked exit
     trZombie,                 // sketch item
     trButton,                 // button
-    trZombie,                 // radiation - unused
+    trRadiation,              // radiation
     trOWDown,                 // OWW down
     trUpdraft,                // updraft
     trFlipper,                // flipper
-    trZombie,                 // slowfreeze - unused
+    trSlowfreeze,             // slowfreeze
     trZombie,                 // hatch
     trAnim,                   // triggered animation
     trZombie,                 // hint
@@ -376,7 +379,8 @@ const
     trZombie,                 // paint
     trAnim,                   // once animation
     trBlasticine,             // lems become instabombers on contact
-    trVinewater               // triggers vinetrapper instead of drowner
+    trVinewater,              // triggers vinetrapper instead of drowner
+    trPoison                  // turns lems into zombies
   );
 
 type

@@ -91,6 +91,8 @@ begin
 
   fScreenText := TStringList.Create;
   fReplays := TReplayCheckEntries.Create;
+
+  GameParams.MainForm.Caption := 'SuperLemmix - Mass Replay Check';
 end;
 
 destructor TGameReplayCheckScreen.Destroy;
@@ -484,6 +486,8 @@ begin
 
     fOldHighRes := GameParams.HighResolution;
     GameParams.HighResolution := false;
+    GlobalGame.fReplayWasLoaded := true;
+
     PieceManager.Clear;
 
     MakeHiddenOption(VK_ESCAPE, ExitToMenu);
@@ -525,6 +529,8 @@ end;
 procedure TGameReplayCheckScreen.CloseScreen(aNextScreen: TGameScreenType);
 begin
   GameParams.HighResolution := fOldHighRes;
+  GlobalGame.fReplayWasLoaded := false;
+
   PieceManager.Clear;
 
   if ParamStr(2) = 'replaytest' then

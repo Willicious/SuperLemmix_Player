@@ -36,7 +36,7 @@ const
   AlwaysAnimateObjects = [DOM_NONE, DOM_EXIT, DOM_FORCELEFT, DOM_FORCERIGHT,
         DOM_WATER, DOM_FIRE, DOM_ONEWAYLEFT, DOM_ONEWAYRIGHT, DOM_ONEWAYDOWN,
         DOM_UPDRAFT, DOM_NOSPLAT, DOM_SPLAT, DOM_BACKGROUND, DOM_PAINT,
-        DOM_BLASTICINE, DOM_VINEWATER];
+        DOM_BLASTICINE, DOM_VINEWATER, DOM_POISON, DOM_RADIATION, DOM_SLOWFREEZE];
 
 type
   TLemmingKind = (lkNormal, lkNeutral, lkZombie);
@@ -134,7 +134,10 @@ type
     ForceRightMap              : TArrayArrayBoolean;
     AnimMap                    : TArrayArrayBoolean;
     BlasticineMap              : TArrayArrayBoolean;
-    VinewaterMap              : TArrayArrayBoolean;
+    VinewaterMap               : TArrayArrayBoolean;
+    PoisonMap                  : TArrayArrayBoolean;
+    RadiationMap               : TArrayArrayBoolean;
+    SlowfreezeMap              : TArrayArrayBoolean;
 
     fReplayManager             : TReplay;
 
@@ -149,8 +152,8 @@ type
     BasherMasks                : TBitmap32;
     FencerMasks                : TBitmap32;
     MinerMasks                 : TBitmap32;
-    ProjectileMasks            : TBitmap32;
     GrenadeMask                : TBitmap32;
+    SpearMasks                 : TBitmap32;
     LaserMask                  : TBitmap32;
     fMasksLoaded               : Boolean;
 
@@ -185,6 +188,7 @@ type
     fLastBlockerCheckLem       : TLemming; // blocker responsible for last blocker field check, or nil if none
     Gadgets                    : TGadgetList; // list of objects excluding entrances
     CurrSpawnInterval          : Integer; //the current spawn interval, obviously
+    LemIsAsleep                : Boolean;
 
     CurrSkillCount             : array[TBasicLemmingAction] of Integer;  // should only be called with arguments in AssignableSkills
     UsedSkillCount             : array[TBasicLemmingAction] of Integer;  // should only be called with arguments in AssignableSkills
@@ -197,7 +201,7 @@ type
     fGameCheated               : Boolean;
     NextLemmingCountDown       : Integer;
     fFastForward               : Boolean;
-    fSuperLemming              : Boolean;
+    fSuperlemming              : Boolean;
     fTargetIteration           : Integer; // this is used in hyperspeed
     fHyperSpeedCounter         : Integer; // no screenoutput
     fHyperSpeed                : Boolean; // we are at hyperspeed no targetbitmap output
@@ -230,10 +234,12 @@ type
     procedure DoTalismanCheck;
     function CheckAllZombiesKilled: Boolean; //checks for remaining zombies, returning false if nuke is used or if zombies remain
     function CheckIfZombiesRemain: Boolean; //slightly different - checks for remaining zombies, returns true if zombies remain
+    function CheckForClassicMode: Boolean; //checks if classic mode is activated
+    function CheckNoPause: Boolean; //checks if pause has been pressed at any time
     function GetIsReplaying: Boolean;
     function GetIsReplayingNoRR(isPaused: Boolean): Boolean;
     procedure ApplySpear(P: TProjectile);
-    procedure ApplyGrenadeMask(P: TProjectile);
+    procedure ApplyGrenadeExplosionMask(P: TProjectile);
     procedure ApplyLaserMask(P: TPoint; L: TLemming);
     procedure ApplyBashingMask(L: TLemming; MaskFrame: Integer);
     procedure ApplyFencerMask(L: TLemming; MaskFrame: Integer);
@@ -263,6 +269,11 @@ type
       function HandleWaterSwim(L: TLemming): Boolean;
       function HandleBlasticine(L: TLemming): Boolean;
       function HandleVinewater(L: TLemming): Boolean;
+      function HandlePoisonDrown(L: TLemming): Boolean;
+      function HandlePoisonSwim(L: TLemming): Boolean;
+      function HandleRadiation(L: TLemming): Boolean;
+      function HandleSlowfreeze(L: TLemming): Boolean;
+
 
     function CheckForOverlappingField(L: TLemming): Boolean;
     procedure CheckForQueuedAction;
@@ -315,6 +326,8 @@ type
     procedure Transition(L: TLemming; NewAction: TBasicLemmingAction; DoTurn: Boolean = False);
     procedure TurnAround(L: TLemming);
     function UpdateExplosionTimer(L: TLemming): Boolean;
+    procedure UpdateFreezingTimer(L: TLemming);
+    procedure UpdateUnfreezingTimer(L: TLemming);
     procedure UpdateGadgets;
 
     procedure UpdateProjectiles;
@@ -427,7 +440,11 @@ type
     SpawnIntervalModifier      : Integer; //negative = decrease each update, positive = increase each update, 0 = no change
     fSpawnIntervalChanged      : Boolean; //set to true in AdjustSpawnInterval when the SI has changed
     ReplayInsert               : Boolean;
-    IsBackstepping             : Boolean;
+    fIsBackstepping            : Boolean;
+    fRewindPressed             : Boolean;
+    fTurboPressed              : Boolean;
+    fReplayWasLoaded           : Boolean;
+    fPauseWasPressed           : Boolean;
 
     constructor Create(aOwner: TComponent); override;
     destructor Destroy; override;
@@ -458,7 +475,7 @@ type
     function GetTargetLemming: TLemming;
     procedure CheckForNewShadow(aForceRedraw: Boolean = false);
     function SpawnIntervalChanged: Boolean;
-    //procedure PlayAssignFailSound;
+    procedure PlayAssignFailSound;
     //procedure SetSkillsToInfinite; //hotbookmark
 
   { properties }
@@ -478,6 +495,11 @@ type
     property Playing: Boolean read fPlaying write fPlaying;
     property Renderer: TRenderer read fRenderer;
     property Replaying: Boolean read GetIsReplaying;
+    property ReplayWasLoaded: Boolean read fReplayWasLoaded; //write fReplayWasLoaded;
+    property PauseWasPressed: Boolean read fPauseWasPressed write fPauseWasPressed;
+    property RewindPressed: Boolean read fRewindPressed write fRewindPressed;
+    property TurboPressed: Boolean read fTurboPressed write fTurboPressed;
+    property IsBackstepping: Boolean read fIsBackstepping write fIsBackstepping;
     property ReplayingNoRR[isPaused: Boolean]: Boolean read GetIsReplayingNoRR;
     property ReplayManager: TReplay read fReplayManager;
     property IsSelectWalkerHotkey: Boolean read fIsSelectWalkerHotkey write fIsSelectWalkerHotkey;
@@ -488,6 +510,7 @@ type
     property CancelReplayAfterSkip: Boolean read fCancelReplayAfterSkip write fCancelReplayAfterSkip;
     property HitTestAutoFail: Boolean read fHitTestAutoFail write fHitTestAutoFail;
     property IsOutOfTime: Boolean read GetOutOfTime;
+    property IsSuperlemming: Boolean read fSuperlemming;
 
     property RenderInterface: TRenderInterface read fRenderInterface;
     property IsSimulating: Boolean read GetIsSimulating;
@@ -562,11 +585,11 @@ const
   DOM_SECRET           = 16; // no longer used!!
   DOM_SKETCH           = 16;
   DOM_BUTTON           = 17;
-  DOM_RADIATION        = 18; // no longer used!!
+  DOM_RADIATION        = 18;
   DOM_ONEWAYDOWN       = 19;
   DOM_UPDRAFT          = 20;
   DOM_FLIPPER          = 21;
-  DOM_SLOWFREEZE       = 22; // no longer used!!
+  DOM_SLOWFREEZE       = 22;
   DOM_WINDOW           = 23;
   DOM_ANIMATION        = 24; // no longer used!!
   DOM_HINT             = 25;
@@ -582,6 +605,7 @@ const
   DOM_ANIMONCE         = 35;
   DOM_BLASTICINE       = 36; //lems become instabombers on contact
   DOM_VINEWATER        = 37; //triggers vinetrapper instead of drowner
+  DOM_POISON           = 38; //turns lems into zombies
   *)
 
   // removal modes
@@ -646,7 +670,6 @@ var
     MINUTE_IN_FRAMES = 17 * 60;
     HALF_MINUTE_IN_FRAMES = 17 * 30;
     TEN_SECONDS_IN_FRAMES = 17 * 10;
-    //ONE_SECOND_IN_FRAMES = 17;
   begin
     Result := false;
     if Items[aStateIndex].CurrentIteration = 0 then
@@ -659,10 +682,6 @@ var
     if (Items[aStateIndex].CurrentIteration mod TEN_SECONDS_IN_FRAMES = 0)
     and (aCurrentIteration - Items[aStateIndex].CurrentIteration <= MINUTE_IN_FRAMES) then
       Result := true;
-//    // If saving every second, delete every three
-//    if (Items[aStateIndex].CurrentIteration mod ONE_SECOND_IN_FRAMES = 0)
-//    and (aCurrentIteration - Items[aStateIndex].CurrentIteration <= ONE_SECOND_IN_FRAMES * 3) then
-//      Result := True;
   end;
 begin
   // What we want to save:
@@ -870,6 +889,14 @@ var
       if not CheckAllZombiesKilled then
         Exit;
 
+    if (aTalisman.RequireClassicMode) then
+      if not CheckForClassicMode then
+        Exit;
+
+    if (aTalisman.RequireNoPause) then
+      if not CheckNoPause then
+        Exit;
+
     Result := true;
   end;
 begin
@@ -886,6 +913,31 @@ begin
       GameParams.CurrentLevel.TalismanStatus[Level.Talismans[i].ID] := true;
     end;
   end;
+end;
+
+function TLemmingGame.CheckForClassicMode: Boolean;
+begin
+  Result := false;
+
+  //check if a replay has been loaded
+  if ReplayWasLoaded then Exit;
+
+  //classic mode has to be active
+  if GameParams.ClassicMode then
+    Result := true;
+end;
+
+function TLemmingGame.CheckNoPause: Boolean;
+begin
+  Result := false;
+
+  //check if a replay has been loaded
+  if ReplayWasLoaded then Exit;
+
+  //check if pause was pressed
+  if PauseWasPressed then Exit;
+
+  Result := true;
 end;
 
 function TLemmingGame.CheckAllZombiesKilled: Boolean;
@@ -985,15 +1037,15 @@ begin
   LemmingList    := TLemmingList.Create;
   ProjectileList := TProjectileList.Create;
 
-  TimebomberMask := TBitmap32.Create;
-  BomberMask     := TBitmap32.Create;
-  FreezerMask    := TBitmap32.Create;
-  BasherMasks    := TBitmap32.Create;
-  FencerMasks    := TBitmap32.Create;
-  MinerMasks     := TBitmap32.Create;
-  GrenadeMask    := TBitmap32.Create;
-  ProjectileMasks := TBitmap32.Create;
-  LaserMask      := TBitmap32.Create;
+  TimebomberMask          := TBitmap32.Create;
+  BomberMask              := TBitmap32.Create;
+  FreezerMask             := TBitmap32.Create;
+  BasherMasks             := TBitmap32.Create;
+  FencerMasks             := TBitmap32.Create;
+  MinerMasks              := TBitmap32.Create;
+  GrenadeMask             := TBitmap32.Create;
+  SpearMasks              := TBitmap32.Create;
+  LaserMask               := TBitmap32.Create;
 
   Gadgets        := TGadgetList.Create;
   BlockerMap     := TBitmap32.Create;
@@ -1111,7 +1163,7 @@ begin
   BomberMask.Free;
   FreezerMask.Free;
   GrenadeMask.Free;
-  ProjectileMasks.Free;
+  SpearMasks.Free;
   LaserMask.Free;
   BasherMasks.Free;
   FencerMasks.Free;
@@ -1128,23 +1180,28 @@ begin
   inherited Destroy;
 end;
 
-//procedure TLemmingGame.PlayAssignFailSound;
-//var
-//L: TLemming;
-//SelectedLemming: TLemming;
-//
-//begin
-//  SelectedLemming := fRenderInterface.SelectedLemming;
-//
-//  //L deliberately not initialised to prevent infinite loop
-//  if not (L = SelectedLemming) and not ProcessSkillAssignment(False) then
-//  begin
-//    if HasSteelAt(SelectedLemming.LemX, SelectedLemming.LemY) then
-//      CueSoundEffect(SFX_HITS_STEEL, SelectedLemming.Position)
-//    else
-//      CueSoundEffect(SFX_ASSIGN_FAIL, SelectedLemming.Position);
-//  end;
-//end;
+procedure TLemmingGame.PlayAssignFailSound;
+var
+SelectedLemming: TLemming;
+HighlitLemming: TLemming;
+begin
+  SelectedLemming := fRenderInterface.SelectedLemming;
+  HighlitLemming := GetHighlitLemming;
+
+  if (SelectedLemming <> nil) then
+  begin
+    if HasSteelAt(SelectedLemming.LemX, SelectedLemming.LemY) then
+      CueSoundEffect(SFX_HITS_STEEL, SelectedLemming.Position)
+    else
+      CueSoundEffect(SFX_ASSIGN_FAIL, SelectedLemming.Position);
+  end else if (GetHighlitLemming <> nil) then
+    begin
+    if HasSteelAt(HighlitLemming.LemX, HighlitLemming.LemY) then
+      CueSoundEffect(SFX_HITS_STEEL, HighlitLemming.Position)
+    else
+      CueSoundEffect(SFX_ASSIGN_FAIL, HighlitLemming.Position);
+  end;
+end;
 
 procedure TLemmingGame.PlayMusic;
 begin
@@ -1174,8 +1231,8 @@ begin
     LoadMask(BasherMasks, 'basher.png', CombineMaskPixelsNeutral);  // combine routines for Laserer, Basher, Fencer and Miner are set when used
     LoadMask(FencerMasks, 'fencer.png', CombineMaskPixelsNeutral);
     LoadMask(MinerMasks, 'miner.png', CombineMaskPixelsNeutral);
-    LoadMask(ProjectileMasks, 'projectiles.png', CombineNoOverwriteMask);
     LoadMask(GrenadeMask, 'grenader.png', CombineMaskPixelsNeutral);
+    LoadMask(SpearMasks, 'spears.png', CombineNoOverwriteMask);
     LoadMask(LaserMask, 'laser.png', CombineMaskPixelsNeutral);
     fMasksLoaded := true;
   end;
@@ -1202,11 +1259,17 @@ begin
   fLeavingHyperSpeed := False;
   fPauseOnHyperSpeedExit := False;
 
+  fSuperlemming := Level.Info.SuperLemming;
+
   fFastForward := False;
-  fSuperLemming := Level.Info.SuperLemming;
+  fRewindPressed := False;
+  fTurboPressed := False;
+  fIsBackstepping := False;
+  fPauseWasPressed := False;
 
   fGameFinished := False;
   fGameCheated := False;
+
   LemmingsToRelease := Level.Info.LemmingsCount;
   LemmingsCloned := 0;
   TimePlay := Level.Info.TimeLimit;
@@ -1530,6 +1593,10 @@ procedure TLemmingGame.SetZombieField(L: TLemming);
 var
   X, Y: Integer;
 begin
+////if we wanted to limit zombie infectiousness to "live" states only, this would do it
+////it's been decided that they should be infectious as long as they're present at all
+//  if not (L.LemAction in [baSplatting, baDrowning, baVaporizing, baVinetrapping,
+//                          baExploding, baTimebombFinish]) then
   with L do
   begin
     for X := LemX - 5 to LemX + 5 do
@@ -1701,6 +1768,11 @@ begin
       end;
   end;
 
+  if (NewAction = baFreezerExplosion) and (L.LemAction = baSwimming) then
+  begin
+    L.LemY := L.LemY + 2;
+  end;
+
   if NewAction = baDehoisting then
     L.LemDehoistPinY := L.LemY;
   if NewAction = baSliding then
@@ -1780,14 +1852,18 @@ begin
     baFreezerExplosion: CueSoundEffect(SFX_EXPLOSION, L.Position);
     baSwimming   : begin // If possible, float up 4 pixels when starting
                      i := 0;
-                     while (i < 4) and HasTriggerAt(L.LemX, L.LemY - i - 1, trWater)
+                     while (i < 4) and (HasTriggerAt(L.LemX, L.LemY - i - 1, trWater)
+                                     or HasTriggerAt(L.LemX, L.LemY - i - 1, trPoison))
                                    and not HasPixelAt(L.LemX, L.LemY - i - 1) do
                        Inc(i);
                      Dec(L.LemY, i);
                    end;
     baFixing     : L.LemDisarmingFrames := 42;
     baJumping    : L.LemJumpProgress := 0;
-    baLasering   : L.LemLaserRemainTime := 10;
+    baLasering   : begin
+                     L.LemLaserRemainTime := 10;
+                     CueSoundEffect(SFX_LASER, L.Position);
+                    end;
   end;
 end;
 
@@ -1809,7 +1885,7 @@ begin
   begin               //all these states bypass ohno phase
     if L.LemAction in [baVaporizing, baVinetrapping, baDrowning, baFloating, baGliding,
                       baFalling, baSwimming, baReaching, baShimmying, baJumping,
-                      baFrozen] then
+                      baFreezing, baFrozen] then
     begin
       if L.LemIsTimebomber then Transition(L, baTimebombFinish)
       else if L.LemTimerToFreeze and not UserSetNuking then
@@ -1827,6 +1903,17 @@ begin
   end;
 end;
 
+procedure TLemmingGame.UpdateFreezingTimer(L: TLemming);
+begin
+  if L.LemFreezingTimer > 0 then
+    Dec(L.LemFreezingTimer);
+end;
+
+procedure TLemmingGame.UpdateUnfreezingTimer(L: TLemming);
+begin
+  if L.LemUnfreezingTimer > 0 then
+    Dec(L.LemUnfreezingTimer);
+end;
 
 procedure TLemmingGame.CheckForGameFinished;
 begin
@@ -1837,8 +1924,8 @@ begin
     Exit;
 
   //stops single-lemming levels ending when 1 lemming has been removed and 0 are saved
-  if (Level.Info.LemmingsCount = 1) and ((LemmingsRemoved) = 1)
-  and not (LemmingsIn >= 1) then
+  if ((Level.Info.LemmingsCount = 1) and ((LemmingsRemoved) = 1))
+  and not (LemmingsIn >= 1) and not GameParams.ClassicMode then
       Exit;
   //we probably want to do more here ^^^ - maybe auto-restart, or show a message
 
@@ -1850,7 +1937,7 @@ begin
   end;
 
   //ends the level when no time or lemmings (including zombies) remain
-  if IsOutOfTime and (LemmingsOut = 0) and (CheckIfZombiesRemain = false) then
+  if IsOutOfTime and (LemmingsOut = 0) and (LemIsAsleep) and (CheckIfZombiesRemain = false) then
    begin
     Finish(GM_FIN_LEMMINGS);
     Exit;
@@ -1939,6 +2026,12 @@ begin
   SetLength(BlasticineMap, Level.Info.Width, Level.Info.Height);
   SetLength(VinewaterMap, 0, 0);
   SetLength(VinewaterMap, Level.Info.Width, Level.Info.Height);
+  SetLength(PoisonMap, 0, 0);
+  SetLength(PoisonMap, Level.Info.Width, Level.Info.Height);
+  SetLength(RadiationMap, 0, 0);
+  SetLength(RadiationMap, Level.Info.Width, Level.Info.Height);
+  SetLength(SlowfreezeMap, 0, 0);
+  SetLength(SlowfreezeMap, Level.Info.Width, Level.Info.Height);
 
   BlockerMap.SetSize(Level.Info.Width, Level.Info.Height);
   BlockerMap.Clear(DOM_NONE);
@@ -2084,6 +2177,9 @@ begin
       DOM_ANIMONCE:   WriteTriggerMap(AnimMap, Gadgets[i].TriggerRect);
       DOM_BLASTICINE: WriteTriggerMap(BlasticineMap, Gadgets[i].TriggerRect);
       DOM_VINEWATER:  WriteTriggerMap(VinewaterMap, Gadgets[i].TriggerRect);
+      DOM_POISON:     WriteTriggerMap(PoisonMap, Gadgets[i].TriggerRect);
+      DOM_RADIATION:  WriteTriggerMap(RadiationMap, Gadgets[i].TriggerRect);
+      DOM_SLOWFREEZE: WriteTriggerMap(SlowfreezeMap, Gadgets[i].TriggerRect);
     end;
   end;
 end;
@@ -2208,6 +2304,19 @@ begin
   end
   else if (NewSkill = baFreezing) then
   begin
+    L.LemFreezingTimer := 8;
+
+    if L.LemIsTimebomber then
+      begin
+        CueSoundEffect(SFX_ASSIGN_SKILL, L.Position);
+        if L.LemAction in [baDrowning, baFloating, baGliding, baFalling,
+                           baSwimming, baReaching, baShimmying, baJumping] then
+          Transition(L, baFreezerExplosion)
+        else
+          Transition(L, baFreezing);
+        Exit;
+      end;
+
     L.LemExplosionTimer := 1;
     L.LemTimerToFreeze := True;
     L.LemHideCountdown := True;
@@ -2264,7 +2373,6 @@ begin
     NewL.LemHoldingProjectileIndex := ProjectileList.Count - 1;
   end;
 end;
-
 
 function TLemmingGame.GetPriorityLemming(out PriorityLem: TLemming;
                                           NewSkillOrig: TBasicLemmingAction;
@@ -2442,9 +2550,9 @@ end;
 function TLemmingGame.MayAssignSlider(L: TLemming): Boolean;
 const
   ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
-               baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
-               baDrowning, baVaporizing, baVinetrapping, baSplatting,
-               baExiting];
+               baFreezerExplosion, baDrowning, baVaporizing, baVinetrapping,
+               baSplatting, baExiting, baSleeping];
+
 begin
   Result := (not (L.LemAction in ActionSet)) and not L.LemIsSlider;
 end;
@@ -2452,9 +2560,9 @@ end;
 function TLemmingGame.MayAssignClimber(L: TLemming): Boolean;
 const
   ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
-               baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
-               baDrowning, baDangling, baVaporizing, baVinetrapping,
-               baSplatting, baExiting];
+               baFreezerExplosion, baDrowning, baDangling, baVaporizing,
+               baVinetrapping, baSplatting, baExiting, baSleeping];
+
 begin
   Result := (not (L.LemAction in ActionSet)) and not L.LemIsClimber;
 end;
@@ -2462,9 +2570,9 @@ end;
 function TLemmingGame.MayAssignFloaterGlider(L: TLemming): Boolean;
 const
   ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
-               baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
-               baDrowning, baDangling, baSplatting, baVaporizing,
-               baVinetrapping, baExiting];
+               baFreezerExplosion, baDrowning, baDangling, baSplatting,
+               baVaporizing, baVinetrapping, baExiting, baSleeping];
+
 begin
   Result := (not (L.LemAction in ActionSet)) and not (L.LemIsFloater or L.LemIsGlider);
 end;
@@ -2472,9 +2580,8 @@ end;
 function TLemmingGame.MayAssignSwimmer(L: TLemming): Boolean;
 const
   ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
-               baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
-               baDangling, baVaporizing, baVinetrapping,
-               baSplatting, baExiting];   // Does NOT contain baDrowning!
+               baFreezerExplosion, baDangling, baVaporizing, baVinetrapping,
+               baSplatting, baExiting, baSleeping];   // Does NOT contain baDrowning!
 begin
   Result := (not (L.LemAction in ActionSet)) and not L.LemIsSwimmer;
 end;
@@ -2482,9 +2589,9 @@ end;
 function TLemmingGame.MayAssignDisarmer(L: TLemming): Boolean;
 const
   ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
-               baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
-               baDrowning, baDangling, baSplatting, baVaporizing,
-			         baVinetrapping, baExiting];
+               baFreezerExplosion, baDrowning, baDangling, baSplatting,
+               baVaporizing, baVinetrapping, baExiting, baSleeping];
+
 begin
   Result := (not (L.LemAction in ActionSet)) and not L.LemIsDisarmer;
 end;
@@ -2508,11 +2615,9 @@ end;
 //Timebomber can be assigned to all states except those in list
 function TLemmingGame.MayAssignTimebomber(L: TLemming): Boolean;
 const
-  ActionSet = [baTimebombing, baOhnoing, //baFreezing, hotbookmark - we may want to allow this
-               baTimebombFinish, baExploding, baFreezerExplosion,
-               baDangling, baVaporizing, baVinetrapping,
-               baSplatting, baExiting];
-               //putting baTimebombing in here doesn't work - why???
+  ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
+               baFreezerExplosion, baDangling, baVaporizing, baVinetrapping,
+               baSplatting, baExiting, baSleeping];
 begin
   //non-assignable from the top of the level
   if L.LemY <= 0 then
@@ -2521,19 +2626,16 @@ begin
       Exit;
     end else
   Result := not (L.LemAction in ActionSet)
-  //stops repeat timebomber assignments to same lem
-  //and bomber/freezer assignments to timebomber
+  //stops repeat timebomber assignments to same lem, and bomber/freezer assignments to timebomber
   and not (L.LemExplosionTimer > 0);
 end;
 
 //Exploders and freezers can be assigned to all states except those in list
 function TLemmingGame.MayAssignExploder(L: TLemming): Boolean;
 const
-  ActionSet = [baTimebombing, baOhnoing, //baFreezing, hotbookmark - we may want to allow this
-               baTimebombFinish, baExploding, baFreezerExplosion,
-               baDangling, baVaporizing, baVinetrapping, baSplatting,
-               baExiting];
-               //putting baTimebombing in here doesn't work - why???
+  ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
+               baFreezerExplosion, baDangling, baVaporizing, baVinetrapping,
+               baSplatting, baExiting, baSleeping];
 begin
   //non-assignable from the top of the level
   if L.LemY <= 0 then
@@ -2542,8 +2644,7 @@ begin
       Exit;
     end else
   Result := not (L.LemAction in ActionSet)
-  //stops repeat timebomber assignments to same lem
-  //and bomber/freezer assignments to timebomber
+  //stops repeat timebomber assignments to same lem, and bomber/freezer assignments to timebomber
   and not (L.LemExplosionTimer > 0);
 end;
 
@@ -2551,9 +2652,7 @@ function TLemmingGame.MayAssignFreezer(L: TLemming): Boolean;
 const
   ActionSet = [baTimebombing, baTimebombFinish, baOhnoing, baExploding,
                baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
-               baDangling, baVaporizing, baVinetrapping,
-               baSplatting, baExiting];
-               //putting baTimebombing in here doesn't work - why???
+               baVaporizing, baVinetrapping, baSplatting, baExiting, baSleeping];
 begin
     //non-assignable from the top of the level
   if L.LemY <= 0 then
@@ -2562,9 +2661,6 @@ begin
       Exit;
     end else
   Result := not (L.LemAction in ActionSet)
-  //stops repeat timebomber assignments to same lem
-  //and bomber/freezer assignments to timebomber
-  and not (L.LemExplosionTimer > 0);
 end;
 
 function TLemmingGame.MayAssignBuilder(L: TLemming): Boolean;
@@ -2924,7 +3020,8 @@ begin
     // Transition if we are at the end position and need to do one
     // Except if we try to splat and there is water at the lemming position - then let this take precedence.
     if (fLemNextAction <> baNone) and ([CheckPos[0, i], CheckPos[1, i]] = [L.LemX, L.LemY])
-      and ((fLemNextAction <> baSplatting) or not HasTriggerAt(L.LemX, L.LemY, trWater)) then
+      and ((fLemNextAction <> baSplatting)
+      or not HasTriggerAt(L.LemX, L.LemY, trWater) or not HasTriggerAt(L.LemX, L.LemY, trPoison)) then
     begin
       Transition(L, fLemNextAction);
       if fLemJumpToHoistAdvance then
@@ -2957,9 +3054,21 @@ begin
     if HasTriggerAt(CheckPos[0, i], CheckPos[1, i], trFire) then
       AbortChecks := HandleFire(L);
 
+    // Radiation
+    if (not AbortChecks) and HasTriggerAt(CheckPos[0, i], CheckPos[1, i], trRadiation) then
+      HandleRadiation(L);
+
+    // Slowfreeze
+    if (not AbortChecks) and HasTriggerAt(CheckPos[0, i], CheckPos[1, i], trSlowfreeze) then
+      HandleSlowfreeze(L);
+
     // Water - Check only for drowning here!
     if (not AbortChecks) and HasTriggerAt(CheckPos[0, i], CheckPos[1, i], trWater) then
       AbortChecks := HandleWaterDrown(L);
+
+    // Poison - Check only for drowning here!
+    if (not AbortChecks) and HasTriggerAt(CheckPos[0, i], CheckPos[1, i], trPoison) then
+      AbortChecks := HandlePoisonDrown(L);
 
     // Triggered traps and one-shot traps
     if (not AbortChecks) and HasTriggerAt(CheckPos[0, i], CheckPos[1, i], trTrap) then
@@ -3010,6 +3119,10 @@ begin
   // Check for water to transition to swimmer only at final position
   if HasTriggerAt(L.LemX, L.LemY, trWater) then
     HandleWaterSwim(L);
+
+  // Check for poison to transition to swimmer only at final position
+  if HasTriggerAt(CheckPos[0, i], CheckPos[1, i], trPoison) then
+    HandlePoisonSwim(L);
 
   // Check for blocker fields and force-fields
   // but not for miners removing terrain, see http://www.lemmingsforums.net/index.php?topic=2710.0
@@ -3081,6 +3194,9 @@ begin
     trZombie:     Result :=     (ReadZombieMap(X, Y) and 1 <> 0);
     trBlasticine: Result :=     ReadTriggerMap(X, Y, BlasticineMap);
     trVinewater:  Result :=     ReadTriggerMap(X, Y, VinewaterMap);
+    trPoison:     Result :=     ReadTriggerMap(X, Y, PoisonMap);
+    trRadiation:  Result :=     ReadTriggerMap(X, Y, RadiationMap);
+    trSlowfreeze: Result :=     ReadTriggerMap(X, Y, SlowfreezeMap);
   end;
 end;
 
@@ -3157,8 +3273,9 @@ begin
   Gadget := Gadgets[GadgetID];
 
   if     L.LemIsDisarmer and HasPixelAt(PosX, PosY) // (PosX, PosY) is the correct current lemming position, due to intermediate checks!
-     and not (L.LemAction in [baDehoisting, baSliding, baClimbing, baHoisting,
-                              baSwimming, baOhNoing, baJumping, baDangling])
+     and not (L.LemAction in [baDehoisting, baSliding, baClimbing, baHoisting, baSwimming,
+                              baOhNoing, baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
+                              baJumping, baDangling])
   then begin
     // Set action after fixing, if we are moving upwards and haven't reached the top yet
     if (L.LemYOld > L.LemY) and HasPixelAt(PosX, PosY + 1) then L.LemActionNew := baAscending
@@ -3169,6 +3286,9 @@ begin
   end
   else
   begin
+    //traps don't affect lems in any of the freezer states
+    if L.LemAction in [baFreezing, baFreezerExplosion, baFrozen, baUnfreezing] then Exit;
+    
     // trigger trap
     Gadget.Triggered := True;
     Gadget.ZombieMode := L.LemIsZombie;
@@ -3363,6 +3483,10 @@ begin
   begin
     Result := True;
 
+    // We want to cancel certain actions first
+    if L.LemAction in [baPlatforming, baBashing, baFencing] then
+      Transition(L, baWalking);
+
     TurnAround(L);
 
     // Zombies always infect a blocker they bounce off
@@ -3378,8 +3502,7 @@ begin
         ApplyMinerMask(L, 1, -2*L.LemDx, -1);
     end
     // Required for turned builders not to walk into air
-    // For platformers, see http://www.lemmingsforums.net/index.php?topic=2530.0
-    else if (L.LemAction in [baBuilding, baPlatforming]) and (L.LemPhysicsFrame >= 9) then
+    else if (L.LemAction = baBuilding) and (L.LemPhysicsFrame >= 9) then
       LayBrick(L)
     else if L.LemAction in [baClimbing, baSliding, baDehoisting] then
     begin
@@ -3454,6 +3577,41 @@ begin
   end;
 end;
 
+function TLemmingGame.HandlePoisonDrown(L: TLemming): Boolean;
+const
+  ActionSet = [baSwimming, baExploding, baFreezerExplosion, baVaporizing,
+               baVinetrapping, baExiting, baSplatting];
+begin
+  Result := False;
+  if not L.LemIsSwimmer then
+  begin
+    Result := True;
+
+    if not (L.LemAction in ActionSet) then
+    begin
+      Transition(L, baDrowning);
+      CueSoundEffect(SFX_DROWNING, L.Position);
+      if not L.LemIsZombie then RemoveLemming(L, RM_ZOMBIE);
+    end;
+  end;
+end;
+
+function TLemmingGame.HandlePoisonSwim(L: TLemming): Boolean;
+const
+  ActionSet = [baSwimming, baClimbing, baHoisting,
+               baTimebombing, baTimebombFinish, baOhnoing, baExploding,
+               baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
+               baVaporizing, baVinetrapping, baExiting, baSplatting];
+begin
+  Result := True;
+  if L.LemIsSwimmer and not (L.LemAction in ActionSet) then
+  begin
+    if not L.LemIsZombie then RemoveLemming(L, RM_ZOMBIE);
+    Transition(L, baSwimming);
+    CueSoundEffect(SFX_SWIMMING, L.Position);
+  end;
+end;
+
 function TLemmingGame.HandleBlasticine(L: TLemming): Boolean;
 begin
   Result := True;
@@ -3470,6 +3628,37 @@ begin
   begin
     Transition(L, baVinetrapping);
     CueSoundEffect(SFX_VINETRAPPING, L.Position);
+  end;
+end;
+
+function TLemmingGame.HandleRadiation(L: TLemming): Boolean;
+begin
+  Result := True;
+  //prevents repeatedly assigning to the same lemming whilst in trigger area
+  if (L.LemExplosionTimer = 0)
+  // disallowed actions
+  and not (L.LemAction in [baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
+                          baOhnoing, baTimebombing, baExploding, baTimebombfinish]) then
+  begin
+    L.LemExplosionTimer := 169;
+    L.LemHideCountdown := False;
+    L.LemTimerToFreeze := False;
+    L.LemIsTimebomber := True; //allows Freezers to be assigned without stopping the countdown
+  end;
+end;
+
+function TLemmingGame.HandleSlowfreeze(L: TLemming): Boolean;
+begin
+  Result := True;
+  //prevents repeatedly assigning to the same lemming whilst in trigger area
+  if (L.LemExplosionTimer = 0)
+  // disallowed actions
+  and not (L.LemAction in [baFreezing, baFreezerExplosion, baFrozen, baUnfreezing,
+                          baOhnoing, baTimebombing, baExploding, baTimebombfinish]) then
+  begin
+    L.LemExplosionTimer := 169;
+    L.LemHideCountdown := False;
+    L.LemTimerToFreeze := True;
   end;
 end;
 
@@ -3516,23 +3705,23 @@ end;
 
 procedure TLemmingGame.ApplySpear(P: TProjectile);
 var
-  Graphic: TProjectileGraphic;
+  Graphic: TSpearGraphic;
   SrcRect: TRect;
   Hotspot: TPoint;
   Target: TPoint;
 begin
-  Graphic := P.Graphic;
-  SrcRect := PROJECTILE_GRAPHIC_RECTS[Graphic];
-  Hotspot := P.Hotspot;
+  Graphic := P.SpearGraphic;
+  SrcRect := SPEAR_GRAPHIC_RECTS[Graphic];
+  Hotspot := P.SpearHotspot;
   Target := Point(P.X, P.Y);
 
-  ProjectileMasks.DrawTo(PhysicsMap, Target.X - Hotspot.X, Target.Y - Hotspot.Y, SrcRect);
+  SpearMasks.DrawTo(PhysicsMap, Target.X - Hotspot.X, Target.Y - Hotspot.Y, SrcRect);
 
   if not IsSimulating then
     fRenderInterface.AddTerrainSpear(P);
 end;
 
-procedure TLemmingGame.ApplyGrenadeMask(P: TProjectile);
+procedure TLemmingGame.ApplyGrenadeExplosionMask(P: TProjectile);
 begin
   GrenadeMask.DrawTo(PhysicsMap, P.X - 9, P.Y - 9);
 
@@ -3982,6 +4171,22 @@ begin
 end;
 
 function TLemmingGame.CheckLevelBoundaries(L: TLemming) : Boolean;
+//var
+//WrapPosX, WrapPosY: Integer;
+
+//    procedure GenerateWrapLem;
+//    var
+//      NewL: TLemming;
+//    begin
+//      NewL := TLemming.Create;
+//      NewL.Assign(L);
+//      NewL.LemIndex := LemmingList.Count;
+//      NewL.LemIdentifier := 'W' + IntToStr(CurrentIteration);
+//      LemmingList.Add(NewL);
+//      NewL.LemX := WrapPosX;
+//      NewL.LemY := WrapPosY;
+//      Inc(LemmingsOut);
+//    end;
 begin
   Result := True;
 
@@ -4031,6 +4236,12 @@ begin
   //Bottom
   if (L.LemY > LEMMING_MAX_Y + PhysicsMap.Height) then
   begin
+//    WrapPosX := L.LemX;                                    //the -6 is to make sure they're at 0
+//    WrapPosY := L.LemY - LEMMING_MAX_Y - PhysicsMap.Height - 3;
+//    Inc(LemmingsCloned);
+//    GenerateWrapLem;
+//    if Wrap then RemoveLemming(L, RM_NEUTRAL, true); else (the "true" is needed to mute the sound)
+
     RemoveLemming(L, RM_NEUTRAL);
     Result := False;
   end;
@@ -4038,43 +4249,17 @@ begin
   //Left Side
   if (L.LemX <= 1) then
   begin
-//this code makes the sides solid
-    TurnAround(L);
-    Inc(L.LemX);
-    Transition(L, baWalking);
+    //this makes the sides behave like one-way forcefields
+    HandleForceField(L, 1);
     Result := True;
-
-////this code makes the sides into exits!
-//  Transition(L, baJumping);
-//  if (L.LemX <= 1) then
-//    begin
-//      RemoveLemming(L, RM_SAVE);
-//      CueSoundEffect(SFX_YIPPEE, L.Position);
-//    end;
-
-////in theory, this should teleport them to the right, but it doesn't work
-//  L.LemX := PhysicsMap.Width -8;
   end;
 
-    //Right Side
+  //Right Side
   if (L.LemX >= PhysicsMap.Width -2) then
   begin
-//this code makes the sides solid
-    TurnAround(L);
-    Dec(L.LemX);
-    Transition(L, baWalking);
+    //this makes the sides behave like one-way forcefields
+    HandleForceField(L, -1);
     Result := True;
-
-////this code makes the sides into exits!
-//  Transition(L, baJumping);
-//  If L.LemX >= PhysicsMap.Width -1 then
-//    begin
-//      RemoveLemming(L, RM_SAVE);
-//      CueSoundEffect(SFX_YIPPEE, L.Position);
-//    end;
-
-////this teleports them to the left side, and works, but crashes the game
-//  L.LemX := 8;
   end;
 end;
 
@@ -4160,7 +4345,9 @@ var
     begin
       Inc(Result);
       Inc(L.LemFallen);
-      if HasTriggerAt(L.LemX, L.LemY + Result, trWater) then L.LemFallen := 0;
+      if (HasTriggerAt(L.LemX, L.LemY + Result, trWater)
+       or HasTriggerAt(L.LemX, L.LemY + Result, trPoison))
+        then L.LemFallen := 0;
       if L.LemY + Result >= PhysicsMap.Height then Break;
     end;
 
@@ -4175,12 +4362,14 @@ begin
 
   Inc(L.LemX, L.LemDx);
 
-  if HasTriggerAt(L.LemX, L.LemY, trWater) or HasPixelAt(L.LemX, L.LemY) then
+  if HasTriggerAt(L.LemX, L.LemY, trWater) or HasTriggerAt(L.LemX, L.LemY, trPoison)
+  or HasPixelAt(L.LemX, L.LemY) then
   begin
     LemDy := FindGroundPixel(L.LemX, L.LemY);
 
     // Rise if there is water above the lemming
-    if (LemDy >= -1) and HasTriggerAt(L.LemX, L.LemY -1, trWater)
+    if (LemDy >= -1) and (HasTriggerAt(L.LemX, L.LemY -1, trWater)
+                       or HasTriggerAt(L.LemX, L.LemY -1, trPoison))
                      and not HasPixelAt(L.LemX, L.LemY - 1) then
       Dec(L.LemY)
 
@@ -4191,9 +4380,10 @@ begin
       if DiveDist > 0 then
       begin
         Inc(L.LemY, DiveDist); // Dive below the terrain
-        if not HasTriggerAt(L.LemX, L.LemY, trWater) then
+        if not (HasTriggerAt(L.LemX, L.LemY, trWater) or HasTriggerAt(L.LemX, L.LemY, trPoison)) then
           Transition(L, baWalking);
-      end else if L.LemIsClimber and not HasTriggerAt(L.LemX, L.LemY - 1, trWater) then
+      end else if L.LemIsClimber
+        and not (HasTriggerAt(L.LemX, L.LemY - 1, trWater) or HasTriggerAt(L.LemX, L.LemY, trPoison)) then
       // Only transition to climber, if the lemming is not under water
         Transition(L, baClimbing)
       else begin
@@ -4211,7 +4401,8 @@ begin
     // see http://www.lemmingsforums.net/index.php?topic=3380.0
     // And the swimmer should not yet stop if the water and terrain overlaps
     else if (LemDy <= -1)
-         or ((LemDy = 0) and not HasTriggerAt(L.LemX, L.LemY, trWater)) then
+    or ((LemDy = 0)
+     and not (HasTriggerAt(L.LemX, L.LemY, trWater) or HasTriggerAt(L.LemX, L.LemY, trPoison))) then
     begin
       Transition(L, baWalking);
       Inc(L.LemY, LemDy);
@@ -4394,9 +4585,18 @@ end;
 function TLemmingGame.HandleSleeping(L: TLemming): Boolean;
 begin
    Result := True;
-   L.LemIsNeutral := True;
 
    if L.LemFrame = 1 then Dec(LemmingsOut);
+
+   //ensures the animation finishes before the level ends
+   if LemmingsOut = 0 then
+   begin
+      if L.LemFrame < 20 then
+     begin
+        LemIsAsleep := False
+     end else
+        LemIsAsleep := True;
+   end;
 
    if ((L.LemX <= 0) and (L.LemDX = -1)) or ((L.LemX >= Level.Info.Width - 1) and (L.LemDX = 1)) then
     RemoveLemming(L, RM_NEUTRAL); // shouldn't get to this point but just in case
@@ -4431,7 +4631,8 @@ begin
     Result := false;
   end else if SliderHasPixelAt(L.LemX, L.LemY) then
   begin
-    if HasTriggerAt(L.LemX - L.LemDX, L.LemY, trWater, L) then
+    if HasTriggerAt(L.LemX - L.LemDX, L.LemY, trWater, L)
+    or HasTriggerAt(L.LemX - L.LemDX, L.LemY, trPoison, L) then
     begin
       Dec(L.LemX, L.LemDX);
       if L.LemIsSwimmer then
@@ -4586,8 +4787,10 @@ begin
   end
 
   else if (L.LemPhysicsFrame = 10) and (L.LemNumberOfBricksLeft <= 3) then
-    CueSoundEffect(SFX_BUILDER_WARNING, L.Position)
-
+  begin
+    CueSoundEffect(SFX_BUILDER_WARNING, L.Position);
+    //fRenderer.VisualSFXTimer := 10;
+  end
   else if L.LemPhysicsFrame = 15 then
   begin
     if not L.LemPlacedBrick then
@@ -4645,8 +4848,10 @@ begin
     LayBrick(L)
 
   else if (L.LemPhysicsFrame = 10) and (L.LemNumberOfBricksLeft <= 3) then
-    CueSoundEffect(SFX_BUILDER_WARNING, L.Position)
-
+  begin
+    CueSoundEffect(SFX_BUILDER_WARNING, L.Position);
+    //fRenderer.VisualSFXTimer := 10;
+  end
   else if L.LemPhysicsFrame = 0 then
   begin
     Dec(L.LemNumberOfBricksLeft);
@@ -4711,8 +4916,12 @@ begin
   begin
     Dec(L.LemNumberOfBricksLeft);
 
-    // sound on last three bricks
-    if L.LemNumberOfBricksLeft < 3 then CueSoundEffect(SFX_BUILDER_WARNING, L.Position);
+    // sound and VisualSFX on last three bricks
+    if L.LemNumberOfBricksLeft < 3 then
+    begin
+      CueSoundEffect(SFX_BUILDER_WARNING, L.Position);
+      //fRenderer.VisualSFXTimer := 10;
+    end;
 
     if not L.LemPlacedBrick then
     begin
@@ -4725,8 +4934,6 @@ begin
       Transition(L, baShrugging);
   end;
 end;
-
-
 
 function TLemmingGame.HandleBashing(L: TLemming): Boolean;
 var
@@ -5287,7 +5494,7 @@ begin
       end;
     end;
     // Check whether we fall down due to a wall
-    for i := 6 to 7 do
+    for i := 5 to 6 do
     begin
       if HasPixelAt(L.LemX + L.LemDX, L.LemY - i) then
       begin
@@ -5323,7 +5530,8 @@ begin
         Exit;
       end else if L.LemY >= Level.Info.Height + 8 then
       begin
-        RemoveLemming(L, RM_NEUTRAL);
+        //RemoveLemming(L, RM_NEUTRAL);
+        Transition(L, baFalling);
         Exit;
       end;
     end;
@@ -5434,8 +5642,9 @@ const
                   Inc(L.LemX, L.LemDX);
                   fLemNextAction := baSliding;
                 end else begin
-                  L.LemDX := -L.LemDX;
-                  fLemNextAction := baFalling;
+                  TurnAround(L);
+                  //L.LemDX := -L.LemDX;
+                  //fLemNextAction := baFalling;
                 end;
               end;
               Exit;
@@ -5914,6 +6123,9 @@ begin
   begin
     if UserSetNuking and (L.LemExplosionTimer <= 0) and (Index_LemmingToBeNuked > L.LemIndex) then
       Transition(L, baOhnoing);
+
+    //lems that have started exiting should be saved
+    if L.LemEndOfAnimation then RemoveLemming(L, RM_SAVE);
   end else
   if L.LemEndOfAnimation then RemoveLemming(L, RM_SAVE);
 end;
@@ -6004,6 +6216,7 @@ end;
 
 function TLemmingGame.HandleExploding(L: TLemming): Boolean;
 begin
+  Renderer.IsFreezerExplosion := False;
   Result := False;
 
   if (L.LemAction = baExploding)
@@ -6041,7 +6254,7 @@ end;
 
 function TLemmingGame.HandleFreezerExplosion(L: TLemming): Boolean;
 begin
-  Renderer.fIsFreezerExplosion := true;
+  Renderer.IsFreezerExplosion := true;
   Result := false;
 
   if (L.LemAction = baFreezerExplosion) then
@@ -6064,7 +6277,10 @@ begin
     for i := 1 to 7 do
 
     if not HasPixelAt(L.LemX, L.LemY -i) then
-    Transition(L, baUnfreezing);
+    begin
+      Transition(L, baUnfreezing);
+      L.LemUnfreezingTimer := 12;
+    end;
   end;
 
   if UserSetNuking then L.LemHideCountdown := false;
@@ -6169,6 +6385,11 @@ begin
 
   DrawAnimatedGadgets;
 
+  // Update the VisualSFX timer when necessary
+//  if (fRenderer.VisualSFXTimer <> 0) then
+//    fRenderer.UpdateVisualSFXTimer;
+//  OutputDebugString(PChar(IntToStr(fRenderer.VisualSFXTimer)));
+
   // Check lemmings under cursor
   HitTest;
   fSoundList.Clear(); // Clear list of played sound effects - just to be safe
@@ -6248,9 +6469,10 @@ begin
       if P.IsSpear then
       begin
         ApplySpear(P);
+        CueSoundEffect(SFX_SPEAR_HIT);
         ProjectileList.Delete(i);
       end else begin
-        ApplyGrenadeMask(P);
+        ApplyGrenadeExplosionMask(P);
         CueSoundEffect(SFX_EXPLOSION, Point(P.X, P.Y));
       end;
     end;
@@ -6284,19 +6506,28 @@ begin
   if fParticleFinishTimer > 0 then
     Dec(fParticleFinishTimer);
 
-  if fClockFrame = 17 then
+  if IsSuperlemming then
   begin
-    fClockFrame := 0;
-    if TimePlay > -5999 then Dec(TimePlay);
-    if TimePlay = 0 then CueSoundEffect(SFX_TIMEUP);
-  end;
+    if fClockFrame = 50 then
+    begin
+      fClockFrame := 0;
+      if TimePlay > -5999 then Dec(TimePlay);
+      if TimePlay = 0 then CueSoundEffect(SFX_TIMEUP);
+    end;
+  end else if fClockFrame = 17 then
+    begin
+      fClockFrame := 0;
+      if TimePlay > -5999 then Dec(TimePlay);
+      if TimePlay = 0 then CueSoundEffect(SFX_TIMEUP);
+    end;
 
   // hard coded dos frame numbers
   case CurrentIteration of
     15:
       //prevents double-triggering the sound when Rewinding to the start
-      if not IsBackstepping then
+      if not IsBackstepping or not RewindPressed then
       begin
+        //fRenderer.VisualSFXTimer := 17;
         if UseZombieSound then
           CueSoundEffect(SFX_ZOMBIE)
         else
@@ -6365,11 +6596,17 @@ var
 begin
   Result := False;
 
-  // convert buttontype to skilltype
-  Sel := SkillPanelButtonToAction[fSelectedSkill];
-  if Sel = baNone then Exit;
+  // Prevents overwriting same-frame assignments in ReplayInsert Mode
+  if not (ReplayInsert and ReplayManager.HasAssignmentAt(CurrentIteration)) then
+  begin
+    // convert buttontype to skilltype
+    Sel := SkillPanelButtonToAction[fSelectedSkill];
+    if Sel = baNone then Exit;
 
-  Result := AssignNewSkill(Sel, IsHighlight);
+    Result := AssignNewSkill(Sel, IsHighlight);
+  end;
+
+  if not Result then PlayAssignFailSound;
 
   if Result then
     CheckForNewShadow;        // probably unneeded now?
@@ -6500,7 +6737,9 @@ begin
         if RightClick and (GetHighlitLemming <> nil) and (SkillPanelButtonToAction[Value] <> baNone) then
         begin
           if ProcessSkillAssignment(true) then
-            fRenderInterface.ForceUpdate := true;
+            fRenderInterface.ForceUpdate := true
+          else
+            PlayAssignFailSound;
         end;
       end;
   end;
@@ -6898,6 +7137,14 @@ begin
       if ContinueWithLem and (LemExplosionTimer <> 0) then
         ContinueWithLem := not UpdateExplosionTimer(CurrentLemming);
 
+      // Freezing
+      if ContinueWithLem and (LemFreezingTimer <> 0) then
+        UpdateFreezingTimer(CurrentLemming);
+
+      // Unfreezing
+      if ContinueWithLem and (LemUnfreezingTimer <> 0) then
+        UpdateUnfreezingTimer(CurrentLemming);
+
       // Let lemmings move
       if ContinueWithLem then
         ContinueWithLem := HandleLemming(CurrentLemming);
@@ -6925,7 +7172,7 @@ begin
          and (LemAction <> baExiting)
          and not CurrentLemming.LemIsZombie
          //freezers are protected
-         and not (LemAction = baFrozen) then
+         and not (LemAction in [baFreezing, baFreezerExplosion, baFrozen]) then
         RemoveLemming(CurrentLemming, RM_ZOMBIE);
     end;
   end;
@@ -6986,6 +7233,7 @@ begin
          or HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trFire)
          or HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trBlasticine)
          or HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trVinewater)
+         or (HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trPoison) and not L.LemIsSwimmer)
          or (    HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trTeleport)
              and (FindGadgetID(LemPosArray[0, i], LemPosArray[1, i], trTeleport) <> 65535))
          then
@@ -6995,7 +7243,8 @@ begin
         Break;
       end;
 
-      if HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trWater) and L.LemIsSwimmer then
+      if (HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trWater)
+      or HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trPoison)) and L.LemIsSwimmer then
         fLemNextAction := baSwimming;
 
       if HasTriggerAt(LemPosArray[0, i], LemPosArray[1, i], trTrap) and
@@ -7127,6 +7376,9 @@ begin
   if CurrentIteration > fReplayManager.LastActionFrame then Exit;
 
   fReplayManager.Cut(fCurrentIteration, CurrSpawnInterval);
+
+  // For NoPause talisman - allows replay to be cancelled before music starts
+  if (CurrentIteration < 55) then fReplayWasLoaded := False;
 end;
 
 

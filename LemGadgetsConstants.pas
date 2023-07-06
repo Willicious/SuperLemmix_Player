@@ -22,11 +22,11 @@ const
   DOM_LOCKEXIT         = 15;
   // 16 = unused; formerly sketch, and before that secret level trigger
   DOM_BUTTON           = 17;
-  // 18 = unused; formerly radiation
+  DOM_RADIATION        = 18;
   DOM_ONEWAYDOWN       = 19;
   DOM_UPDRAFT          = 20;
   DOM_FLIPPER          = 21;
-  // 22 = unused, formerly slowfreeze
+  DOM_SLOWFREEZE       = 22;
   DOM_WINDOW           = 23;
   DOM_ANIMATION        = 24;
   // 25 = unused, formerly placeholder for hint but never actually implemented
@@ -42,6 +42,7 @@ const
   DOM_ANIMONCE         = 35;
   DOM_BLASTICINE       = 36;
   DOM_VINEWATER        = 37;
+  DOM_POISON           = 38;
 
 implementation
 

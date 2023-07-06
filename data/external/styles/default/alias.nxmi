@@ -1,0 +1,48 @@
+$STYLE
+  FROM gigalem_treemdbright
+  TO gigalem_treemd
+$END
+
+$STYLE
+  FROM nin10_cattrap
+  TO nin10_misc
+$END
+
+$STYLE
+  FROM nin10_TADragon
+  TO nin10_ta_dragon
+$END
+
+$STYLE
+  FROM nin10_TALava
+  TO nin10_ta_lava
+$END
+
+# Remaining entries are for testing purposes. It is not important to preserve them when using stable builds of NL.
+
+$STYLE
+  FROM redirectstyletest
+  TO orig_dirt
+$END
+
+$GADGET
+  FROM redirecttest:gadgettest
+  TO orig_dirt:trap_01
+$END
+
+$GADGET
+  FROM redirecttest:gadgettestresize
+  TO default:water
+  WIDTH 80
+  HEIGHT 48
+$END
+
+$TERRAIN
+  FROM redirecttest:terraintest
+  TO orig_dirt:clump_02
+$END
+
+$BACKGROUND
+  FROM redirecttest:bgtest
+  TO orig_dirt:nessy
+$END

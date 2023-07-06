@@ -108,6 +108,7 @@ type
 
       procedure WriteNewRecords(aRecords: TLevelRecords; aUserRecords: Boolean);
       procedure WipeRecords;
+      procedure ResetTalismans;
 
       property Group: TNeoLevelGroup read fGroup;
       property Title: String read GetTitle;
@@ -191,6 +192,8 @@ type
 
       function GetNextGroup: TNeoLevelGroup;
       function GetPrevGroup: TNeoLevelGroup;
+      function GetLowestGroup: TNeoLevelGroup;
+      function GetHighestGroup: TNeoLevelGroup;
 
       function GetStatus: TNeoLevelStatus;
 
@@ -252,6 +255,11 @@ type
 
       property PrevGroup: TNeoLevelGroup read GetPrevGroup;
       property NextGroup: TNeoLevelGroup read GetNextGroup;
+      property LowestGroup: TNeoLevelGroup read GetLowestGroup;
+      property HighestGroup: TNeoLevelGroup read GetHighestGroup;
+
+      function IsLowestGroup: Boolean;
+      function IsHighestGroup: Boolean;
 
       property EnableSave: Boolean read fEnableSave write fEnableSave;
   end;
@@ -606,6 +614,14 @@ begin
   WorldRecords.Wipe;
 end;
 
+procedure TNeoLevelEntry.ResetTalismans;
+var
+aIndex: Cardinal;
+begin
+  for aIndex := 0 to fTalismans.Count do
+  SetTalismanStatus(aIndex, False);
+end;
+
 procedure TNeoLevelEntry.WriteNewRecords(aRecords: TLevelRecords; aUserRecords: Boolean);
   procedure Apply(var Existing: TLevelRecordEntry; New: TLevelRecordEntry; aHigherIsBetter: Boolean);
   begin
@@ -937,8 +953,8 @@ var
     else
       Result := Result + '0';
 
-//    if Level.Info.SuperLemming then
-//      Result := Result + Level.Info.SuperLemming;
+    if Level.Info.SuperLemming then
+      Result := 'superlemming' + Result + BoolToStr(Level.Info.SuperLemming);
   end;
 
   function SkillsetString: String;
@@ -977,6 +993,7 @@ begin
               SkillsetString);
   end;
 end;
+
 {$endif}
 
 function TNeoLevelGroup.FindFile(aName: String): String;
@@ -1658,6 +1675,74 @@ begin
         Result := Result.Parent.Children[AsChildIndex - 1];
     end;
   until (Result.Levels.Count > 0) or (Result = self);
+end;
+
+function TNeoLevelGroup.GetHighestGroup: TNeoLevelGroup;
+var
+  AsChildIndex: Integer;
+begin
+  Result := self; // failsafe
+  if Result.Parent = nil then Exit;
+
+  repeat
+    if Result.Children.Count > 0 then
+      Result := Result.Children[Result.Children.Count-1]
+    else begin
+      AsChildIndex := Result.Parent.Children.IndexOf(Result);
+      while (AsChildIndex = Result.Parent.Children.Count - 1) and (not Result.IsBasePack) do
+      begin
+        Result := Result.Parent;
+        AsChildIndex := Result.Parent.Children.IndexOf(Result);
+      end;
+
+      if (AsChildIndex < Result.Parent.Children.Count - 1) and not Result.IsBasePack then
+        Result := Result.Parent.Children[AsChildIndex + 1];
+    end;
+  until (Result.Levels.Count > 0) or (Result = self);
+end;
+
+function TNeoLevelGroup.GetLowestGroup: TNeoLevelGroup;
+var
+  NextChildIndex: Integer;
+
+  procedure GoDeepest;
+  begin
+    while Result.Children.Count > 0 do
+      Result := Result.Children[0];
+  end;
+begin
+  Result := self; // failsafe
+  if Result.Parent = nil then Exit;
+
+  repeat
+    if Result.IsBasePack then
+      GoDeepest
+    else begin
+      NextChildIndex := 0; // Set NextChildIndex to 0 to get the first child
+      if NextChildIndex < Result.Parent.Children.Count then
+      begin
+        Result := Result.Parent.Children[NextChildIndex];
+        GoDeepest;
+      end else
+        Result := Result.Parent;
+    end;
+  until (Result.Levels.Count > 0) or (Result = self);
+end;
+
+function TNeoLevelGroup.IsHighestGroup: Boolean;
+var
+  LastGroup: TNeoLevelGroup;
+begin
+  LastGroup := GetHighestGroup;
+  Result := (self = LastGroup);
+end;
+
+function TNeoLevelGroup.IsLowestGroup: Boolean;
+var
+  FirstGroup: TNeoLevelGroup;
+begin
+  FirstGroup := GetLowestGroup;
+  Result := (self = FirstGroup);
 end;
 
 function TNeoLevelGroup.GetStatus: TNeoLevelStatus;

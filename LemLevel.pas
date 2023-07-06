@@ -28,7 +28,6 @@ type
     fHasTimeLimit   : Boolean;
     fTimeLimit      : Integer;
     fSuperlemming   : Boolean;
-    //fKaroshi        : Boolean;
 
     fSkillset: TSkillset;
     fSkillCounts: TSkillCounts;
@@ -69,8 +68,7 @@ type
     property RescueCount    : Integer read fRescueCount write fRescueCount;
     property HasTimeLimit   : Boolean read fHasTimeLimit write fHasTimeLimit;
     property TimeLimit      : Integer read fTimeLimit write fTimeLimit;
-
-    property SuperLemming : Boolean read fSuperLemming write fSuperLemming;
+    property SuperLemming   : Boolean read fSuperLemming write fSuperLemming;
 
     property Skillset: TSkillset read fSkillset write fSkillset;
     property SkillCount[Index: TSkillPanelButton]: Integer read GetSkillCount write SetSkillCount;
@@ -181,7 +179,6 @@ begin
   RescueCount     := 1;
   HasTimeLimit    := false;
   TimeLimit       := 0;
-
   SuperLemming := false;
 
   fSkillset       := [];
@@ -563,9 +560,17 @@ begin
   if ReqText = 'Complete' then
     ReqText := 'Complete the level';
 
-  // And finally, add the note about killing zombies
+  // Add the note about pressing pause
+  if aTalisman.RequireNoPause then
+    ReqText := ReqText + ', without pressing pause';
+
+  // Add the note about killing zombies
   if aTalisman.RequireKillZombies then
     ReqText := ReqText + ', killing all zombies';
+
+  // Add the note about Classic Mode
+  if aTalisman.RequireClassicMode then
+    ReqText := ReqText + ', in Classic Mode';
 
   ReqText := ReqText + '.';
 
@@ -841,17 +846,6 @@ procedure TLevel.LoadGeneralInfo(aSection: TParserSection);
     end;
   end;
 
-  procedure HandleSuperLemming(aString: String);
-  begin
-    aString := Lowercase(aString);
-    if (aString = 'true') then
-    begin
-      Info.SuperLemming := true;
-    end else begin
-      Info.SuperLemming := false;
-    end;
-  end;
-
 var
   Ident: TLabelRecord;
 begin
@@ -881,7 +875,7 @@ begin
       SpawnInterval := aSection.LineNumeric['max_spawn_interval'];
     SpawnIntervalLocked := (aSection.Line['spawn_interval_locked'] <> nil) or (aSection.Line['release_rate_locked'] <> nil);
 
-    HandleSuperLemming(aSection.LineTrimString['superlemming']);
+    SuperLemming := (aSection.Line['superlemming'] <> nil);
 
     Width := aSection.LineNumeric['width'];
     Height := aSection.LineNumeric['height'];
@@ -1213,8 +1207,6 @@ begin
 
     if TimeLimit < 1 then TimeLimit := 1;
     if TimeLimit > 5999 then TimeLimit := 5999;
-
-    //if SuperLemming = true then GameSpeed := gspSuperLemming;
 
     if SpawnInterval < ReleaseRateToSpawnInterval(99) then SpawnInterval := ReleaseRateToSpawnInterval(99);
     if SpawnInterval > ReleaseRateToSpawnInterval(1) then SpawnInterval := ReleaseRateToSpawnInterval(1);

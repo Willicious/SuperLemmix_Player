@@ -17,8 +17,8 @@ const
     SFGraphicsMenu = SFGraphics + 'menu\';
     SFGraphicsPanel = SFGraphics + 'panel\';
     SFGraphicsPanelHighRes = SFGraphics + 'panel-hr\';
-    SFVisualSFX = SFGraphics + 'visualsfx\';
-    SFVisualSFXHighRes = SFGraphics + 'visualsfx-hr\';
+    //SFVisualSFX = SFGraphics + 'visualsfx\';
+    //SFVisualSFXHighRes = SFGraphics + 'visualsfx-hr\';
 
   SFStyles = 'styles\';
       SFDefaultStyle = 'default';
@@ -30,6 +30,7 @@ const
       SFPiecesBackgroundsHighRes = '\backgrounds-hr\';
       SFPiecesLemmings = '\lemmings\';
       SFPiecesLemmingsHighRes = '\lemmings-hr\';
+      SFPiecesGrenades = '\grenades\';
       SFTheme = 'theme.nxtm';
 
   SFLevels = 'levels\';
@@ -70,6 +71,8 @@ const
   SFX_ZOMBIE = 'zombie';
   SFX_ZOMBIE_DIE = 'zombiedie';
   SFX_TIMEUP = 'timeup';
+  SFX_SPEAR_HIT = 'spearhit';
+  SFX_LASER = 'laser';
 
 resourcestring
   SProgramName = 'SuperLemmix Player';
@@ -159,6 +162,7 @@ resourcestring
 
   SYourTime =       'Your time taken is  ';
   SYourTimeRecord = 'Your record time is ';
+  SYourFewestSkills = 'Your fewest total skills is ';
 
   SOptionNextLevel = 'Next level';
   SOptionRetryLevel = 'Retry level';

@@ -64,13 +64,12 @@ type
     fSkillLock            : TBitmap32;
     fSkillInfinite        : TBitmap32;
     fSkillSelected        : TBitmap32;
+    fTurboHighlight       : TBitmap32;
     fSkillIcons           : array[Low(TSkillPanelButton)..LAST_SKILL_BUTTON] of TBitmap32;
     fInfoFont             : array of TBitmap32; {%} { 0..9} {A..Z} // make one of this!
 
     fHighlitSkill         : TSkillPanelButton;
     fLastHighlitSkill     : TSkillPanelButton; // to avoid sounds when shouldn't be played
-
-    fRewindPressed        : Boolean;
 
     fLastDrawnStr         : String;
     fNewDrawStr           : String;
@@ -110,6 +109,7 @@ type
 
     procedure DrawNewStr;
       function LemmingCountStartIndex: Integer; virtual; abstract;
+      function LemmingSavedStartIndex: Integer; virtual; abstract;
       function TimeLimitStartIndex: Integer; virtual; abstract;
     procedure CreateNewInfoString; virtual; abstract;
     procedure SetInfoCursorLemming(Pos: Integer);
@@ -159,9 +159,9 @@ type
 
     procedure PlayReleaseRateSound;
     procedure DrawButtonSelector(aButton: TSkillPanelButton; Highlight: Boolean);
+    procedure DrawTurboHighlight;
     procedure DrawMinimap; virtual;
 
-    property RewindPressed: Boolean read fRewindPressed write fRewindPressed;
     property Minimap: TBitmap32 read fMinimap;
     property MinimapScrollFreeze: Boolean read fMinimapScrollFreeze write SetMinimapScrollFreeze;
 
@@ -270,8 +270,6 @@ begin
   fMinimapImage.OnMouseMove := MinimapMouseMove;
   fMinimapImage.OnMouseUp := MinimapMouseUp;
 
-  fRewindPressed := False;
-
   // Create font and skill panel images (but do not yet load them)
   SetLength(fInfoFont, NUM_FONT_CHARS);
   for i := 0 to NUM_FONT_CHARS - 1 do
@@ -305,6 +303,10 @@ begin
   fSkillSelected := TBitmap32.Create;
   fSkillSelected.DrawMode := dmBlend;
   fSkillSelected.CombineMode := cmMerge;
+
+  fTurboHighlight := TBitmap32.Create;
+  fTurboHighlight.DrawMode := dmBlend;
+  fTurboHighlight.CombineMode := cmMerge;
 
   fSkillCountErase := TBitmap32.Create;
   fSkillCountErase.DrawMode := dmBlend;
@@ -355,6 +357,7 @@ begin
 
   fSkillInfinite.Free;
   fSkillSelected.Free;
+  fTurboHighlight.Free;
   fSkillCountErase.Free;
   fSkillCountEraseInvert.Free;
   fSkillLock.Free;
@@ -666,10 +669,44 @@ var
     Src.DrawTo(Dst, dstX, dstY, SrcRect);
   end;
 
+  procedure LoadGrenadeImages;
+  var
+  CustomStyle: String;
+  CustomGrenadeImages: String;
+  HRCustomGrenadeImages: String;
+  begin
+    CustomStyle := GameParams.Level.Info.GraphicSetName;
+
+    CustomGrenadeImages := AppPath + SFStyles + CustomStyle + SFPiecesGrenades + 'grenades.png';
+    HRCustomGrenadeImages := AppPath + SFStyles + CustomStyle + SFPiecesGrenades + 'grenades-hr.png';
+
+    if (FileExists(CustomGrenadeImages) and FileExists(HRCustomGrenadeImages)) then
+    begin
+      if GameParams.HighResolution then
+        TPngInterface.LoadPngFile(HRCustomGrenadeImages, TempBMP)
+      else
+        TPngInterface.LoadPngFile(CustomGrenadeImages, TempBMP);
+    end else
+
+    if GameParams.HighResolution then
+      TPngInterface.LoadPngFile(AppPath + SFStyles + SFDefaultStyle + SFPiecesGrenades + 'grenades-hr.png', TempBMP)
+    else
+      TPngInterface.LoadPngFile(AppPath + SFStyles + SFDefaultStyle + SFPiecesGrenades + 'grenades.png', TempBMP);
+  end;
+
+  procedure LoadSpearImages;
+  begin
+    if GameParams.HighResolution then
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'spears-hr.png', TempBMP)
+    else
+      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'spears.png', TempBMP);
+  end;
+
 begin
   // Load the erasing icon and selection outline first
   GetGraphic('skill_count_erase.png', fSkillCountErase);
   GetGraphic('skill_selected.png', fSkillSelected);
+  GetGraphic('turbo_highlight.png', fTurboHighlight);
 
   fSkillCountEraseInvert.Assign(fSkillCountErase);
   for y := 0 to fSkillCountEraseInvert.Height-1 do
@@ -726,9 +763,9 @@ begin
     // Bomber is drawn resized
     DrawAnimationFrameResized(fSkillIcons[spbBomber], EXPLOSION, 0, Rect(-2, 7, 15, 22));
 
-    // Freezer is tricky - the goal is an outlined frozen lemming over an ice cube
-    DrawAnimationFrame(fSkillIcons[spbFreezer], ICECUBE, 0, 8, 20);
+    // Freezer is tricky - the goal is an outlined ice cube over a frozen lemming
     DrawAnimationFrame(fSkillIcons[spbFreezer], FROZEN, 0, 7, 21);
+    DrawAnimationFrame(fSkillIcons[spbFreezer], ICECUBE, 0, 8, 20);
     TempBmp.Assign(fSkillIcons[spbFreezer]);
     fSkillIcons[spbFreezer].Clear(0);
     TempBmp.DrawTo(fSkillIcons[spbFreezer], 0, 0);
@@ -757,19 +794,16 @@ begin
     DrawBrick(fSkillIcons[spbStacker], 10, 17);
     DrawBrick(fSkillIcons[spbStacker], 10, 16);
 
-    // Projectiles are messy.
-    if GameParams.HighResolution then
-      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'projectiles-hr.png', TempBMP)
-    else
-      TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'projectiles.png', TempBMP);
+    // Projectiles need to be loaded separately
+    LoadGrenadeImages;
+    DrawMiscBmp(TempBMP, fSkillIcons[spbGrenader], 10, 7, GRENADE_GRAPHIC_RECTS[pgGrenadeU]);
 
+    LoadSpearImages;
     DoProjectileRecolor(TempBMP, BrickColor);
+    DrawMiscBmp(TempBMP, fSkillIcons[spbSpearer], 2, 7, SPEAR_GRAPHIC_RECTS[pgSpearSlightBLTR]);
 
-    DrawMiscBmp(TempBMP, fSkillIcons[spbSpearer], 2, 7, PROJECTILE_GRAPHIC_RECTS[pgSpearSlightBLTR]);
-    DrawMiscBmp(TempBMP, fSkillIcons[spbGrenader], 10, 7, PROJECTILE_GRAPHIC_RECTS[pgGrenade]);
-
-    DrawAnimationFrame(fSkillIcons[spbSpearer], THROWING, 2, 6, 20);
     DrawAnimationFrame(fSkillIcons[spbGrenader], THROWING, 3, 3, 20);
+    DrawAnimationFrame(fSkillIcons[spbSpearer], THROWING, 2, 6, 20);
 
     // Laserer, Basher, Fencer, Miner are all simple - we do have to take care to avoid frames with destruction particles
     // For Digger, we just have to accept some particles.
@@ -935,8 +969,8 @@ var
   MagicFrequencyAmiga: Single;
   //MagicFrequencyCalculatedByWillAndEric: Single;
 begin
-  //stops the sound cueing during backwards framesteps
-  if Game.IsBackstepping
+  //stops the sound cueing during backwards framesteps and rewind
+  if (Game.IsBackstepping or Game.RewindPressed)
     //unless the change is at the current frame
     and not (Game.ReplayManager.HasRRChangeAt(Game.CurrentIteration)) then Exit;
 
@@ -1145,6 +1179,25 @@ begin
   DrawNineSlice(Image.Bitmap, BorderRect, fSkillSelected.BoundsRect, Rect(3 * ResMod, 3 * ResMod, 3 * ResMod, 3 * ResMod), fSkillSelected);
 end;
 
+procedure TBaseSkillPanel.DrawTurboHighlight;
+var
+  BorderRect: TRect;
+  aButton: TSkillPanelButton;
+begin
+  aButton := spbFastForward;
+  BorderRect := fButtonRects[aButton];
+
+  if Game.TurboPressed then
+  begin
+    Inc(BorderRect.Right, ResMod);
+    Inc(BorderRect.Bottom, ResMod * 2);
+
+    DrawNineSlice(Image.Bitmap, BorderRect, fTurboHighlight.BoundsRect,
+      Rect(3 * ResMod, 3 * ResMod, 3 * ResMod, 3 * ResMod), fTurboHighlight);
+  end else if not (Game.TurboPressed or (fGameWindow.GameSpeed = gspFF)) then
+    RemoveHighlight(spbFastForward);
+end;
+
 procedure TBaseSkillPanel.RemoveHighlight(aButton: TSkillPanelButton);
 var
   BorderRect, EraseRect: TRect;
@@ -1301,13 +1354,23 @@ begin
             fCombineHueShift := 1 / 6;
         end else
           SpecialCombine := false;
+      end else if (i > LemmingSavedStartIndex) and (i <= LemmingSavedStartIndex + 4) then
+      begin
+        if Game.LemmingsSaved < Level.Info.RescueCount then
+        begin
+          SpecialCombine := true;
+          fCombineHueShift := -1 / 3;
+        end else
+          SpecialCombine := false;
       end else if Level.Info.HasTimeLimit and (i > TimeLimitStartIndex) and (i <= TimeLimitStartIndex + 5) then
       begin
         SpecialCombine := true;
 
         if Game.IsOutOfTime then
           fCombineHueShift := 1 / 2
-        else if Level.Info.TimeLimit * 17 < Game.CurrentIteration + 255 {15 * 17} then
+        else if (Level.Info.TimeLimit * 17 < Game.CurrentIteration + 255 {15 * 17}) and not Game.IsSuperLemming then
+          fCombineHueShift := -1 / 3
+        else if (Level.Info.TimeLimit * 50 < Game.CurrentIteration + 750 {15 * 50}) and Game.IsSuperLemming then
           fCombineHueShift := -1 / 3
         else
           fCombineHueShift := -1 / 6;
@@ -1472,7 +1535,7 @@ var
 const
   LEN = 4;
 begin
-  S := IntToStr(Game.LemmingsSaved - Level.Info.RescueCount);
+  S := IntToStr(Game.LemmingsSaved); // - Level.Info.RescueCount);
 
   if Length(S) < LEN then
     S := PadL(PadR(S, LEN - 1), LEN);
@@ -1489,11 +1552,17 @@ const
 begin
   if Level.Info.HasTimeLimit then
   begin
-    Time := Level.Info.TimeLimit - Game.CurrentIteration div 17;
+    if Game.IsSuperlemming then
+      Time := Level.Info.TimeLimit - Game.CurrentIteration div 50 //hotbookmark
+    else
+      Time := Level.Info.TimeLimit - Game.CurrentIteration div 17;
     if Time < 0 then
       Time := 0 - Time;
   end else
-    Time := Game.CurrentIteration div 17;
+    if Game.IsSuperlemming then
+      Time := Game.CurrentIteration div 50 //hotbookmark
+    else
+      Time := Game.CurrentIteration div 17;
 
   // Minutes
   S := PadL(IntToStr(Time div 60), 2);
@@ -1506,7 +1575,8 @@ end;
 
 procedure TBaseSkillPanel.SetReplayMark(Pos: Integer);
 begin
-  if not Game.ReplayingNoRR[fGameWindow.GameSpeed = gspPause] then
+  if GameParams.ClassicMode //we never want to draw Replay mark in Classic Mode
+  or not Game.ReplayingNoRR[fGameWindow.GameSpeed = gspPause] then
     fNewDrawStr[Pos] := ' '
   else if Game.ReplayInsert then
     fNewDrawStr[Pos] := #97
@@ -1571,10 +1641,11 @@ begin
   case aButton of
     spbSlower:
       begin
+        Game.fIsBackstepping := False;
         DrawButtonSelector(spbSlower, true);
-        Game.IsBackstepping := False;
 
-        if GameParams.ClassicMode then //deactivates min/max RR jumping in ClassicMode
+        //deactivates min/max RR jumping in ClassicMode
+        if GameParams.ClassicMode then
           begin
             Game.SetSelectedSkill(i, True);
           end else
@@ -1582,10 +1653,11 @@ begin
       end;
     spbFaster:
       begin
+        Game.fIsBackstepping := False;
         DrawButtonSelector(spbFaster, true);
-        Game.IsBackstepping := False;
 
-        if GameParams.ClassicMode then //deactivates min/max RR jumping in ClassicMode
+        //deactivates min/max RR jumping in ClassicMode
+        if GameParams.ClassicMode then
           begin
             Game.SetSelectedSkill(i, True);
             end else
@@ -1593,15 +1665,18 @@ begin
       end;
     spbPause:
       begin
-        if RewindPressed then fRewindPressed := False;
+        // 1 second grace to prevent restart from failing the NoPause talisman
+        if (Game.CurrentIteration > 17) then Game.PauseWasPressed := True;
+        if Game.RewindPressed then Game.fRewindPressed := False;
+        if Game.TurboPressed then Game.fTurboPressed := False;
 
         if fGameWindow.GameSpeed = gspPause then
         begin
-         fGameWindow.GameSpeed := gspNormal;
-         Game.IsBackstepping := False;
+          Game.fIsBackstepping := False;
+          fGameWindow.GameSpeed := gspNormal;
         end else begin
-         fGameWindow.GameSpeed := gspPause;
-         Game.IsBackstepping := True;
+          Game.fIsBackstepping := True;
+          fGameWindow.GameSpeed := gspPause;
         end;
       end;
     spbNuke:
@@ -1616,9 +1691,23 @@ begin
       end;
     spbFastForward:
       begin
-        if RewindPressed then fRewindPressed := False;
+        if Game.IsSuperLemming then Exit;
+        if Game.RewindPressed then Game.fRewindPressed := False;
+        if Game.IsBackstepping then Game.fIsBackstepping := False;
 
-        if Game.IsBackstepping then Game.IsBackstepping := False;
+        if GameParams.TurboFF then
+        begin
+          if ((fGameWindow.GameSpeed = gspFF) or Game.TurboPressed) then fGameWindow.GameSpeed := gspNormal;
+
+          if not Game.TurboPressed then
+            Game.fTurboPressed := True
+          else if Game.TurboPressed then
+            Game.fTurboPressed := False;
+
+          Exit;
+        end;
+
+        if Game.TurboPressed then Game.fTurboPressed := False;
 
         if fGameWindow.GameSpeed = gspFF then
           fGameWindow.GameSpeed := gspNormal
@@ -1627,18 +1716,17 @@ begin
       end;
     spbRewind:
       begin
+        if Game.IsSuperLemming then Exit;
+
         if fGameWindow.GameSpeed in [gspFF, gspPause, gspSlowMo] then
           fGameWindow.GameSpeed := gspNormal;
 
-        if not RewindPressed then
-        begin
-          fRewindPressed := True;
-          Game.IsBackstepping := True;
-        end else if RewindPressed then
-        begin
-          fRewindPressed := False;
-          Game.IsBackstepping := False;
-        end;
+        if Game.TurboPressed then Game.fTurboPressed := False;
+
+        if not Game.RewindPressed then
+          Game.fRewindPressed := True
+        else if Game.RewindPressed then
+          Game.fRewindPressed := False;
       end;
     spbRestart:
       begin
@@ -1647,9 +1735,12 @@ begin
         if GameParams.ClassicMode or not GameParams.ReplayAfterRestart then // cancels Replay after Restart in ClassicMode
           begin
             Game.CancelReplayAfterSkip := true;
+            Game.fReplayWasLoaded := false;
             fGameWindow.GotoSaveState(0);
-          end else
+          end else begin
             fGameWindow.GotoSaveState(0);
+            Game.fReplayWasLoaded := true;
+          end;
       end;
     spbSquiggle:
       begin

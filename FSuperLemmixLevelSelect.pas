@@ -36,6 +36,7 @@ type
     btnCleanseLevels: TButton;
     btnCleanseOne: TButton;
     btnClearRecords: TButton;
+    btnResetTalismans: TBitBtn;
     procedure FormCreate(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure tvLevelSelectClick(Sender: TObject);
@@ -50,6 +51,8 @@ type
     procedure tvLevelSelectChange(Sender: TObject; Node: TTreeNode);
     procedure tvLevelSelectKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure btnResetTalismansClick(Sender: TObject);
+    procedure tvLevelSelectDblClick(Sender: TObject);
   private
     fLastLevelPath: String;
 
@@ -84,6 +87,7 @@ type
     procedure SetAdvancedOptionsLevel;
   public
     property LoadAsPack: Boolean read fLoadAsPack;
+    procedure LoadIcons;
   end;
 
 const // Icon indexes
@@ -138,6 +142,8 @@ const // Icon indexes
   ICON_MAX_SKILL_TYPES = 3;
 
   ICON_KILL_ZOMBIES = 43;
+  ICON_CLASSIC_MODE = 44;
+  ICON_NO_PAUSE = 45;
 
   ICON_RECORDS = 35;
   ICON_WORLD_RECORDS = 39;
@@ -253,12 +259,32 @@ begin
   end;
 end;
 
+procedure TFLevelSelect.LoadIcons;
+var
+IconsImg: String;
+aStyle: String;
+aStylePath: String;
+aPath: String;
+begin
+  IconsImg := 'levelinfo_icons.png';
+  aStyle := GameParams.Level.Info.GraphicSetName;
+  aStylePath := AppPath + SFStyles + aStyle + '\levelinfo\';
+  aPath := GameParams.CurrentLevel.Group.ParentBasePack.Path;
+
+  if FileExists(aStylePath + IconsImg) then //check styles folder first
+    TPNGInterface.LoadPngFile(aStylePath + IconsImg, fIconBMP)
+  else if FileExists(GameParams.CurrentLevel.Group.FindFile(IconsImg)) then //then levelpack folder
+    TPNGInterface.LoadPngFile(aPath + IconsImg, fIconBMP)
+  else
+    TPNGInterface.LoadPngFile(AppPath + SFGraphicsMenu + IconsImg, fIconBMP);
+end;
+
 procedure TFLevelSelect.FormCreate(Sender: TObject);
 begin
   fTalismanButtons := TObjectList<TSpeedButton>.Create;
 
   fIconBMP := TBitmap32.Create;
-  TPNGInterface.LoadPngFile(AppPath + SFGraphicsMenu + 'levelinfo_icons.png', fIconBMP);
+  LoadIcons;
   fIconBMP.DrawMode := dmBlend;
 
   fInfoForm := TLevelInfoPanel.Create(self, fIconBMP);
@@ -275,6 +301,7 @@ begin
   pnLevelInfo.Visible := false;
 
   InitializeTreeview;
+  btnResetTalismans.Enabled := false;
 end;
 
 procedure TFLevelSelect.FormShow(Sender: TObject);
@@ -397,6 +424,28 @@ begin
   ModalResult := mrOk;
 end;
 
+procedure TFLevelSelect.btnResetTalismansClick(Sender: TObject);
+var
+  Obj: TObject;
+  L: TNeoLevelEntry absolute Obj;
+  N: TTreeNode;
+begin
+  N := tvLevelSelect.Selected;
+  if N = nil then Exit; // safeguard
+
+  Obj := TObject(N.Data);
+
+  if Obj is TNeoLevelGroup then Exit;
+
+  if MessageDlg('Are you sure you want to reset talismans for the level "' + L.Title + '"?',
+                  mtCustom, [mbYes, mbNo], 0, mbNo) = mrYes then
+  begin
+    L.ResetTalismans;
+    InitializeTreeview;
+    tvLevelSelectClick(tvLevelSelect);
+  end;
+end;
+
 procedure TFLevelSelect.WriteToParams;
 var
   Obj: TObject;
@@ -470,6 +519,11 @@ begin
   SetInfo;
 end;
 
+procedure TFLevelSelect.tvLevelSelectDblClick(Sender: TObject);
+begin
+  SetInfo;
+end;
+
 //when treeview is active, pressing return loads the currently selected level
 procedure TFLevelSelect.tvLevelSelectKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
@@ -539,12 +593,14 @@ var
   end;
 
 begin
+  LoadIcons;
   LoadNodeLabels;
 
   N := tvLevelSelect.Selected;
   if N = nil then
   begin
     btnOk.Enabled := false;
+    btnResetTalismans.Enabled := false;
     Exit;
   end;
 
@@ -601,6 +657,7 @@ begin
     fInfoForm.Visible := false;
 
     btnOk.Enabled := G.LevelCount > 0; // note: Levels.Count is not recursive; LevelCount is
+    btnResetTalismans.Enabled := false;
 
     ClearTalismanButtons;
     SetAdvancedOptionsGroup;
@@ -623,6 +680,11 @@ begin
     fPackTalBox.Visible := false;
 
     btnOk.Enabled := true;
+
+    if (L.Talismans.Count <> 0) then
+      btnResetTalismans.Enabled := true
+    else
+      btnResetTalismans.Enabled := false;
 
     SetAdvancedOptionsLevel;
   end;

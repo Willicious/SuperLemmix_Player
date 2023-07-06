@@ -59,6 +59,10 @@ type
     rgExitSound: TRadioGroup;
     cbShowMinimap: TCheckBox;
     cbReplayAfterRestart: TCheckBox;
+    cbTurboFF: TCheckBox;
+    gbMenuSounds: TGroupBox;
+    cbPostviewJingles: TCheckBox;
+    cbMenuMusic: TCheckBox;
     procedure btnApplyClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnHotkeysClick(Sender: TObject);
@@ -84,7 +88,6 @@ type
 
     procedure SetZoomDropdown(aValue: Integer = -1);
     procedure SetPanelZoomDropdown(aValue: Integer = -1);
-    procedure SetExitSoundRadioGroup(aValue: Integer);
     procedure SetCheckboxes;
     function GetResetWindowSize: Boolean;
     function GetResetWindowPosition: Boolean;
@@ -195,9 +198,6 @@ begin
   else
     MaxWidth := GameParams.MainForm.ClientWidth;
 
-  //if cbCompactSkillPanel.Checked then
-    //MaxZoom := Max(MaxWidth div 320, 1)
-  //else
   if cbShowMinimap.Checked then
     begin
       MaxZoom := Max(MaxWidth div 444, 1);
@@ -220,11 +220,22 @@ end;
 procedure TFormNXConfig.btnApplyClick(Sender: TObject);
 begin
   SaveToParams;
+
+  // do this here so the effect is instant
+  if not GameParams.MenuMusic then
+  begin
+    SoundManager.StopMusic;
+    SoundManager.MenuMusicPlaying := False;
+  end;
 end;
 
 procedure TFormNXConfig.btnOKClick(Sender: TObject);
 begin
   SaveToParams;
+
+  // do this here to mitigate sudden volume changes
+  SoundManager.HandleMenuMusic;
+
   ModalResult := mrOK;
 end;
 
@@ -258,7 +269,6 @@ begin
     cbNoAutoReplay.Checked := not GameParams.NoAutoReplayMode;
     cbReplayAfterRestart.Checked := GameParams.ReplayAfterRestart;
     cbNoBackgrounds.Checked := GameParams.NoBackgrounds;
-    //cbForceDefaultLemmings.Checked := GameParams.ForceDefaultLemmings;
     cbClassicMode.Checked := GameParams.ClassicMode;
     cbHideShadows.Checked := GameParams.HideShadows;
     cbHideClearPhysics.Checked := GameParams.HideClearPhysics;
@@ -268,7 +278,6 @@ begin
     cbHideSkillQ.Checked := GameParams.HideSkillQ;
     cbEdgeScrolling.Checked := GameParams.EdgeScroll;
     cbSpawnInterval.Checked := GameParams.SpawnInterval;
-    //cbHideAdvanced.Checked := GameParams.HideAdvancedOptions;
 
     cbFullScreen.Checked := GameParams.FullScreen;
     cbResetWindowSize.Enabled := not GameParams.FullScreen;
@@ -278,11 +287,10 @@ begin
     cbHighResolution.Checked := GameParams.HighResolution; // must be done before SetZoomDropdown
     cbIncreaseZoom.Checked := GameParams.IncreaseZoom;
     cbLinearResampleMenu.Checked := GameParams.LinearResampleMenu;
-    //cbLinearResampleGame.Checked := GameParams.LinearResampleGame;
-    //cbCompactSkillPanel.Checked := GameParams.CompactSkillPanel;
     cbMinimapHighQuality.Checked := GameParams.MinimapHighQuality;
 
     cbShowMinimap.Checked := GameParams.ShowMinimap;
+    cbTurboFF.Checked := GameParams.TurboFF;
 
     // Zoom Dropdown
     SetZoomDropdown;
@@ -299,6 +307,8 @@ begin
       tbMusicVol.Position := SoundManager.MusicVolume;
 
     cbDisableTestplayMusic.Checked := GameParams.DisableMusicInTestplay;
+    cbPostviewJingles.Checked := GameParams.PostviewJingles;
+    cbMenuMusic.Checked := GameParams.MenuMusic;
 
     btnApply.Enabled := false;
   finally
@@ -329,7 +339,6 @@ begin
   GameParams.ReplayAfterRestart := cbReplayAfterRestart.Checked;
 
   GameParams.NoBackgrounds := cbNoBackgrounds.Checked;
-  //GameParams.ForceDefaultLemmings := cbForceDefaultLemmings.Checked;
   GameParams.ClassicMode := cbClassicMode.Checked;
   GameParams.HideShadows := cbHideShadows.Checked;
   GameParams.HideClearPhysics := cbHideClearPhysics.Checked;
@@ -340,19 +349,16 @@ begin
   GameParams.EdgeScroll := cbEdgeScrolling.Checked;
   GameParams.SpawnInterval := cbSpawnInterval.Checked;
 
-  //GameParams.HideAdvancedOptions := cbHideAdvanced.Checked;
-
   GameParams.FullScreen := cbFullScreen.Checked;
   fResetWindowSize := cbResetWindowSize.Checked;
   fResetWindowPosition := cbResetWindowPosition.Checked;
   GameParams.HighResolution := cbHighResolution.Checked;
   GameParams.IncreaseZoom := cbIncreaseZoom.Checked;
   GameParams.LinearResampleMenu := cbLinearResampleMenu.Checked;
-  //GameParams.LinearResampleGame := cbLinearResampleGame.Checked;
-  //GameParams.CompactSkillPanel := cbCompactSkillPanel.Checked;
   GameParams.MinimapHighQuality := cbMinimapHighQuality.Checked;
 
   GameParams.ShowMinimap := cbShowMinimap.Checked;
+  GameParams.TurboFF := cbTurboFF.Checked;
 
   // Zoom Dropdown
   GameParams.ZoomLevel := cbZoom.ItemIndex + 1;
@@ -370,6 +376,9 @@ begin
 
   GameParams.PreferYippee := rgExitSound.ItemIndex = 0;
   GameParams.PreferBoing := rgExitSound.ItemIndex = 1;
+
+  GameParams.PostviewJingles := cbPostviewJingles.Checked;
+  GameParams.MenuMusic := cbMenuMusic.Checked;
 
   btnApply.Enabled := false;
 end;
@@ -552,12 +561,6 @@ procedure TFormNXConfig.SetCheckboxes;
     if GameParams.PreferYippee then rgExitSound.ItemIndex := 0;
     if GameParams.PreferBoing then rgExitSound.ItemIndex := 1;
   end;
-
-procedure TFormNXConfig.SetExitSoundRadioGroup(aValue: Integer);
-begin
-  if rgExitSound.ItemIndex = 0 then GameParams.PreferYippee;
-  if rgExitSound.ItemIndex = 1 then GameParams.PreferBoing;
-end;
 
 procedure TFormNXConfig.cbFullScreenClick(Sender: TObject);
 begin

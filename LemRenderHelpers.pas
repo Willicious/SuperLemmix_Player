@@ -54,6 +54,8 @@ type
                   rlGadgetsLow,
                   rlLowShadows,
                   rlProjectiles,
+                  rlFreezerLow,
+                  rlFreezerHigh,
                   rlTerrain,
                   rlOnTerrainGadgets,
                   rlOneWayArrows,
@@ -62,7 +64,9 @@ type
                   rlHighShadows,
                   rlObjectHelpers,
                   rlParticles,
-                  rlLemmings);
+                  rlLemmingsLow,
+                  rlLemmingsHigh,
+                  rlCountdown);
 
 const
   SCALE_ON_MERGE_LAYERS = [rlLowShadows, rlHighShadows, rlParticles];
@@ -127,15 +131,15 @@ type
                  hpi_ArrowLeft, hpi_ArrowRight, hpi_ArrowUp, hpi_ArrowDown, hpi_Exclamation,
                  hpi_Exit, hpi_Exit_Lock, hpi_Fire, hpi_Trap, hpi_Trap_Disabled, hpi_Updraft,
                  hpi_Flipper, hpi_Button, hpi_Force, hpi_NoSplat, hpi_Splat,
-                 hpi_Water, hpi_Blasticine, hpi_Vinewater,
+                 hpi_Water, hpi_Blasticine, hpi_Vinewater, hpi_Poison, hpi_Radiation, hpi_Slowfreeze,
                  hpi_FallDist,
                  hpi_Skill_Zombie, hpi_Skill_Neutral, hpi_Skill_Slider, hpi_Skill_Climber,
                  hpi_Skill_Floater, hpi_Skill_Glider, hpi_Skill_Swimmer, hpi_Skill_Disarmer);
 
-  TVisualSFX = (vfx_blank, vfx_letsgo, vfx_chink, vfx_oops, vfx_yippee);
+  //TVisualSFX = (vfx_blank, vfx_letsgo, vfx_chink, vfx_oops, vfx_yippee);
 
   THelperImages = array[Low(THelperIcon)..High(THelperIcon)] of TBitmap32;
-  TVisualSFXImages = array[Low(TVisualSFX)..High(TVisualSFX)] of TBitmap32;
+  //TVisualSFXImages = array[Low(TVisualSFX)..High(TVisualSFX)] of TBitmap32;
 
   TRenderInterface = class // Used for communication between GameWindow, LemGame and LemRendering.
     private
@@ -252,6 +256,9 @@ const
                               'water.png',
                               'blasticine.png',
                               'vinewater.png',
+                              'poison.png',
+                              'radiation.png',
+                              'slowfreeze.png',
                               'fall_distance.png',
                               'skill_zombie.png',
                               'skill_neutral.png',
@@ -262,12 +269,12 @@ const
                               'skill_swimmer.png',
                               'skill_disarmer.png');
 
-  VisualSFXFilenames: array[Low(TVisualSFX)..High(TVisualSFX)] of String =
-                             ('blank.png', //placeholder
-                              'letsgo.png',
-                              'chink.png',
-                              'oops.png',
-                              'yippee.png');
+//  VisualSFXFilenames: array[Low(TVisualSFX)..High(TVisualSFX)] of String =
+//                             ('blank.png', //placeholder
+//                              'letsgo.png',
+//                              'chink.png',
+//                              'oops.png',
+//                              'yippee.png');
 implementation
 
 uses
@@ -480,10 +487,14 @@ begin
     fIsEmpty[i] := True;
   end;
 
-  // Always draw rlBackground, rlTerrain and rlLemmings
+  // Always draw rlBackground, rlTerrain, rlCountdown and rlLemmings
   fIsEmpty[rlBackground] := False;
   fIsEmpty[rlTerrain] := False;
-  fIsEmpty[rlLemmings] := False;
+  fIsEmpty[rlCountdown] := False;
+  fIsEmpty[rlLemmingsLow] := False;
+  fIsEmpty[rlLemmingsHigh] := False;
+  fIsEmpty[rlFreezerLow] := False;
+  fIsEmpty[rlFreezerHigh] := False;
 end;
 
 procedure TRenderBitmaps.CombinePixelsShadow(F: TColor32; var B: TColor32; M: TColor32);

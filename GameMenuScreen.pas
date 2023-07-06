@@ -129,6 +129,7 @@ uses
   CustomPopup,
   FStyleManager,
   FSuperLemmixSetup,
+  GameSound,
   LemGame, // to clear replay
   LemVersion,
   PngInterface;
@@ -150,6 +151,7 @@ begin
   fGroupGraphic := TBitmap32.Create;
 
   fScrollerTextList := TStringList.Create;
+  GameParams.MainForm.Caption := 'SuperLemmix';
 end;
 
 destructor TGameMenuScreen.Destroy;
@@ -267,6 +269,7 @@ begin
   DrawLogo;
   MakePanels;
   MakeFooterText;
+  SoundManager.HandleMenuMusic;
 
   LoadScrollerGraphics;
   DrawScroller;
@@ -719,14 +722,20 @@ end;
 
 procedure TGameMenuScreen.PrevGroup;
 begin
-  GameParams.PrevGroup;
-  UpdateGroupSign;
+  if not GameParams.CurrentLevel.Group.IsLowestGroup then
+  begin
+    GameParams.PrevGroup;
+    UpdateGroupSign;
+  end;
 end;
 
 procedure TGameMenuScreen.NextGroup;
 begin
-  GameParams.NextGroup;
-  UpdateGroupSign;
+  if not GameParams.CurrentLevel.Group.IsHighestGroup then
+  begin
+    GameParams.NextGroup;
+    UpdateGroupSign;
+  end;
 end;
 
 procedure TGameMenuScreen.UpdateGroupSign(aRedraw: Boolean);

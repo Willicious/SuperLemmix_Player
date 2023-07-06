@@ -10,36 +10,53 @@ uses
   Classes, SysUtils, Math, Types;
 
 type
-  TProjectileGraphic =
+  TSpearGraphic =
    (
      pgSpearFlat,
      pgSpearSlightTLBR, pgSpearSlightBLTR,
      pgSpear45TLBR, pgSpear45BLTR,
-     pgSpearSteepTLBR, pgSpearSteepBLTR,
-     pgGrenade, pgGrenadeExplode
+     pgSpearSteepTLBR, pgSpearSteepBLTR
+   );
+
+  TGrenadeGraphic =
+   (
+     pgGrenadeU, pgGrenadeR, pgGrenadeD,
+     pgGrenadeL, pgGrenadeExplode
    );
 
 const
-  PROJECTILE_FLIP: array[TProjectileGraphic] of TProjectileGraphic =
+  SPEAR_FLIP: array[TSpearGraphic] of TSpearGraphic =
   (
     pgSpearFlat,
     pgSpearSlightBLTR, pgSpearSlightTLBR,
     pgSpear45BLTR, pgSpear45TLBR,
-    pgSpearSteepBLTR, pgSpearSteepTLBR,
-    pgGrenade, pgGrenadeExplode
+    pgSpearSteepBLTR, pgSpearSteepTLBR
   );
 
-  PROJECTILE_GRAPHIC_RECTS: array[TProjectileGraphic] of TRect = //this is the code that specifies the size of the grenade cookie spear projectile
+  GRENADE_FLIP: array[TGrenadeGraphic] of TGrenadeGraphic =
   (
-    (Left: 11; Top: 20; Right: 25; Bottom: 22),
-    (Left: 0; Top: 0; Right: 12; Bottom: 6),
-    (Left: 13; Top: 0; Right: 25; Bottom: 6),
-    (Left: 0; Top: 7; Right: 10; Bottom: 17),
-    (Left: 0; Top: 18; Right: 10; Bottom: 28),
-    (Left: 11; Top: 7; Right: 17; Bottom: 19),
-    (Left: 18; Top: 7; Right: 24; Bottom: 19),
-    (Left: 11; Top: 23; Right: 15; Bottom: 28),
-    (Left: 0; Top: 29; Right: 32; Bottom: 61)
+    pgGrenadeU, pgGrenadeL, pgGrenadeD,
+    pgGrenadeR, pgGrenadeExplode
+  );
+
+  SPEAR_GRAPHIC_RECTS: array[TSpearGraphic] of TRect = //this is the code that specifies the size of the grenade cookie spear projectile
+  (
+    (Left: 11; Top: 20; Right: 25; Bottom: 22), //pgSpearFlat
+    (Left: 0; Top: 0; Right: 12; Bottom: 6),    //pgSpearSlightTLBR
+    (Left: 13; Top: 0; Right: 25; Bottom: 6),   //pgSpearSlightBLTR
+    (Left: 0; Top: 7; Right: 10; Bottom: 17),   //pgSpear45TLBR
+    (Left: 0; Top: 18; Right: 10; Bottom: 28),  //pgSpear45BLTR
+    (Left: 11; Top: 7; Right: 17; Bottom: 19),  //pgSpearSteepTLBR
+    (Left: 18; Top: 7; Right: 24; Bottom: 19)   //pgSpearSteepBLTR
+  );
+
+  GRENADE_GRAPHIC_RECTS: array[TGrenadeGraphic] of TRect = //this is the code that specifies the size of the grenade cookie spear projectile
+  (
+    (Left: 1; Top: 7; Right: 6; Bottom: 12), //pgGrenadeU
+    (Left: 7; Top: 7; Right: 12; Bottom: 12), //pgGrenadeR
+    (Left: 13; Top: 7; Right: 18; Bottom: 12), //pgGrenadeD
+    (Left: 19; Top: 7; Right: 24; Bottom: 12), //pgGrenadeL
+    (Left: 0; Top: 13; Right: 32; Bottom: 45)   //pgGrenadeExplode
   );
 
 type
@@ -72,8 +89,10 @@ type
       procedure Discard;
       procedure SetPositionFromLemming;
 
-      function GetGraphic: TProjectileGraphic;
-      function GetGraphicHotspot: TPoint;
+      function GetSpearGraphic: TSpearGraphic;
+      function GetSpearHotspot: TPoint;
+      function GetGrenadeGraphic: TGrenadeGraphic;
+      function GetGrenadeHotspot: TPoint;
     public
       constructor CreateAssign(aSrc: TProjectile);
       constructor CreateSpear(aPhysicsMap: TBitmap32; aLemming: TLemming);
@@ -91,8 +110,10 @@ type
       property Fired: Boolean read fFired;
       property Hit: Boolean read fHit;
 
-      property Hotspot: TPoint read GetGraphicHotspot;
-      property Graphic: TProjectileGraphic read GetGraphic;
+      property SpearGraphic: TSpearGraphic read GetSpearGraphic;
+      property SpearHotspot: TPoint read GetSpearHotspot;
+      property GrenadeGraphic: TGrenadeGraphic read GetGrenadeGraphic;
+      property GrenadeHotspot: TPoint read GetGrenadeHotspot;
 
       property IsSpear: Boolean read fIsSpear;
       property IsGrenade: Boolean read fIsGrenade;
@@ -242,22 +263,47 @@ begin
   fLemming.LemHoldingProjectileIndex := -1;
 end;
 
-function TProjectile.GetGraphic: TProjectileGraphic;
+function TProjectile.GetGrenadeGraphic: TGrenadeGraphic;
 begin
   if fIsGrenade then
   begin
     if fHit then
       Result := pgGrenadeExplode
-    else
-      Result := pgGrenade;
-  end else begin
+      else begin
+        if fFired then
+        case fOffsetX of
+          0..5:     Result := pgGrenadeU; //equiv 1 frame
+          6..15:    Result := pgGrenadeR; //equiv 1 frame
+          16..30:   Result := pgGrenadeD; //equiv 2 frames
+          31..50:   Result := pgGrenadeL; //equiv 2 frames
+          51..75:   Result := pgGrenadeU; //equiv 3 frames
+          76..100:  Result := pgGrenadeR; //equiv 3 frames
+          101..130: Result := pgGrenadeD; //equiv 3 frames
+          131..169: Result := pgGrenadeL; //equiv 4 frames
+          else
+          Result := pgGrenadeU; //let it stay upright after 2 complete spins
+        end else
+        Result := pgGrenadeU; //and at any other time, e.g. before thrown
+      end;
+  end else
+    Result := pgGrenadeU; // shouldn't happen
+
+  if fDX < 0 then
+    Result := GRENADE_FLIP[Result];
+end;
+
+function TProjectile.GetSpearGraphic: TSpearGraphic;
+begin
+  if fIsSpear then
+  begin
     if not fFired then
       case fLemming.LemPhysicsFrame of
         0..3: Result := pgSpearSteepBLTR;
         4: Result := pgSpear45BLTR;
         5: Result := pgSpearSlightBLTR;
 
-        else Result := pgSpearFlat; // shouldn't happen
+        else
+        Result := pgSpearFlat; // shouldn't happen
       end
     else
       case fOffsetX of
@@ -268,28 +314,32 @@ begin
         else if fOffsetX < SPEAR_SLIGHT_UP_BEGIN then Result := pgSpear45BLTR
         else Result := pgSpearSteepTLBR;
       end;
+  end else
+    Result := pgSpearFlat; // shouldn't happen
 
-    if fDX < 0 then
-      Result := PROJECTILE_FLIP[Result];
+  if fDX < 0 then
+    Result := SPEAR_FLIP[Result];
+end;
+
+function TProjectile.GetGrenadeHotspot: TPoint;
+var
+  ImgRect: TRect;
+begin
+  ImgRect := GRENADE_GRAPHIC_RECTS[GrenadeGraphic];
+  if GrenadeGraphic in
+  [pgGrenadeU, pgGrenadeR, pgGrenadeD, pgGrenadeL, pgGrenadeExplode] then
+  begin
+    Result := Point(ImgRect.Width div 2, ImgRect.Height div 2);
   end;
 end;
 
-function TProjectile.GetGraphicHotspot: TPoint;
+function TProjectile.GetSpearHotspot: TPoint;
 var
-  CurGraphic: TProjectileGraphic;
   ImgRect: TRect;
   AtTop: Boolean;
 begin
-  CurGraphic := Graphic;
-  ImgRect := PROJECTILE_GRAPHIC_RECTS[CurGraphic];
-
-  if CurGraphic in [pgGrenade, pgGrenadeExplode] then
-  begin
-    Result := Point(ImgRect.Width div 2, ImgRect.Height div 2);
-    Exit;
-  end;
-
-  case CurGraphic of
+  ImgRect := SPEAR_GRAPHIC_RECTS[SpearGraphic];
+  case SpearGraphic of
     pgSpearFlat: AtTop := false; // Counterintuitively (due to small height of this one) it DOES put it at the top pixel
 
     pgSpearSlightTLBR,

@@ -51,19 +51,22 @@ type
     fLaserGraphic: TBitmap32;
 
     fPhysicsMap         : TBitmap32;
-    fProjectileImage    : TBitmap32;
+    fGrenadeImage       : TBitmap32;
+    fSpearImage         : TBitmap32;
     fLayers             : TRenderBitmaps;
 
     TempBitmap          : TBitmap32;
     RenderInfoRec       : TRenderInfoRec;
     fTheme              : TNeoTheme;
     fHelperImages       : THelperImages;
-    fVisualSFXImages    : TVisualSFXImages;
+    //fVisualSFXImages    : TVisualSFXImages;
+    //fVisualSFXTimer     : Integer;
     fAni                : TBaseAnimationSet;
     fBgColor            : TColor32;
     fParticles          : TParticleTable; // all particle offsets
     fPreviewGadgets     : TGadgetList; // For rendering from Preview screen
     fDoneBackgroundDraw : Boolean;
+    fIsFreezerExplosion : Boolean;
 
     fTempLemmingList: TLemmingList;
 
@@ -71,7 +74,7 @@ type
     fPhysicsRenderingType: TPhysicsRenderingType;
 
     fHelpersAreHighRes:   Boolean;
-    fVisualSFXAreHighRes: Boolean;
+    //fVisualSFXAreHighRes: Boolean;
 
     // Add stuff
     procedure AddTerrainPixel(X, Y: Integer; Color: TColor32);
@@ -125,7 +128,6 @@ type
     property Recolorer: TRecolorImage read GetRecolorer;
   protected
   public
-    fIsFreezerExplosion: Boolean;
     constructor Create;
     destructor Destroy; override;
 
@@ -135,8 +137,9 @@ type
     procedure DrawLevel(aDst: TBitmap32; aRegion: TRect; aClearPhysics: Boolean = false); overload;
 
     procedure LoadHelperImages;
-    procedure LoadVisualSFXImages;
-    procedure LoadProjectileImages;
+    //procedure LoadVisualSFXImages;
+    procedure LoadGrenadeImages;
+    procedure LoadSpearImages;
 
     function FindGadgetMetaInfo(O: TGadgetModel): TGadgetMetaAccessor;
     function FindMetaTerrain(T: TTerrain): TMetaTerrain;
@@ -157,7 +160,9 @@ type
     procedure DrawLemmingHelpers(Dst: TBitmap32; L: TLemming; IsClearPhysics: Boolean = true);
 
     // VisualSFX rendering
-    procedure DrawVisualSFX(Dst: TBitmap32; Gadget: TGadget; Lemming: TLemming);
+//    procedure DrawVisualSFXLemmings(L: TLemming);
+//    procedure DrawVisualSFXGadgets(G: TGadget);
+//    procedure UpdateVisualSFXTimer;
 
     // Lemming rendering
     procedure DrawLemmings(UsefulOnly: Boolean = false);
@@ -165,6 +170,8 @@ type
     procedure DrawThisLemming(aLemming: TLemming; UsefulOnly: Boolean = false);
     procedure DrawLemmingCountdown(aLemming: TLemming);
     procedure DrawLemmingParticles(L: TLemming);
+    procedure DrawFreezingOverlay(L: TLemming);
+    procedure DrawUnfreezingOverlay(L: TLemming);
 
     procedure DrawShadows(L: TLemming; SkillButton: TSkillPanelButton; SelectedSkill: TSkillPanelButton; IsCloneShadow: Boolean);
     procedure DrawJumperShadow(L: TLemming);
@@ -187,7 +194,7 @@ type
     procedure SetHighShadowPixel(X, Y: Integer);
 
     procedure DrawProjectiles;
-    procedure DrawThisProjectile(aProjectile: TProjectile);
+    procedure DrawThisProjectile(P: TProjectile);
 
     procedure RenderWorld(World: TBitmap32; DoBackground: Boolean);
     procedure RenderPhysicsMap(Dst: TBitmap32 = nil);
@@ -202,6 +209,8 @@ type
     property BackgroundColor: TColor32 read fBgColor write fBgColor;
     property Theme: TNeoTheme read fTheme;
     property LemmingAnimations: TBaseAnimationSet read fAni;
+    property IsFreezerExplosion: Boolean read fIsFreezerExplosion write fIsFreezerExplosion;
+    //property VisualSFXTimer: Integer read fVisualSFXTimer write fVisualSFXTimer;
 
     property TerrainLayer: TBitmap32 read GetTerrainLayer; // for save state purposes
     property ParticleLayer: TBitmap32 read GetParticleLayer; // needs to be replaced with making TRenderer draw them
@@ -214,9 +223,6 @@ implementation
 uses
   SharedGlobals,
   GameControl;
-
-var                     //hotbookmark
-  fStartTime: Cardinal; //used to set start time for drawing VisualSFX
 
 { TRenderer }
 
@@ -312,7 +318,11 @@ var
   LemmingList: TLemmingList;
 begin
   if not fLayers.fIsEmpty[rlParticles] then fLayers[rlParticles].Clear(0);
-  fLayers[rlLemmings].Clear(0);
+  if not fLayers.fIsEmpty[rlCountdown] then fLayers[rlCountdown].Clear(0);
+  if not fLayers.fIsEmpty[rlLemmingsLow] then fLayers[rlLemmingsLow].Clear(0);
+  if not fLayers.fIsEmpty[rlLemmingsHigh] then fLayers[rlLemmingsHigh].Clear(0);
+  if not fLayers.fIsEmpty[rlFreezerLow] then fLayers[rlFreezerLow].Clear(0);
+  if not fLayers.fIsEmpty[rlFreezerHigh] then fLayers[rlFreezerHigh].Clear(0);
 
   LemmingList := fTempLemmingList;
 
@@ -362,8 +372,17 @@ begin
     end;
     DrawLemmingCountdown(LemmingList[i]);
 
+    ////hotbookmark - not ready yet, but this is the place to call it from
+    //DrawVisualSFXLemmings(LemmingList[i]);
+
     if LemmingList[i].LemAction = baLasering then
       DrawLemmingLaser(LemmingList[i]);
+
+    if LemmingList[i].LemAction = baFreezing then
+      DrawFreezingOverlay(LemmingList[i]);
+
+    if LemmingList[i].LemAction = baUnfreezing then
+      DrawUnfreezingOverlay(LemmingList[i]);
   end;
 
   for i := 0 to LemmingList.Count-1 do
@@ -466,7 +485,17 @@ begin
   DstRect := GetLocationBounds;
   SrcAnim.DrawMode := dmCustom;
   SrcAnim.OnPixelCombine := Recolorer.CombineLemmingPixels;
-  SrcAnim.DrawTo(fLayers[rlLemmings], DstRect, SrcRect);
+
+  // freezer states are drawn behind terrain
+  if aLemming.LemAction in [baFreezing, baFrozen, baUnfreezing] then
+    SrcAnim.DrawTo(fLayers[rlFreezerLow], DstRect, SrcRect)
+
+  // explosion graphics or about-to-explode lems are drawn behind active lems
+  else if aLemming.LemAction in [baFreezerExplosion, baOhNoing, baExploding,
+                                 baTimebombing, baTimebombFinish] then
+    SrcAnim.DrawTo(fLayers[rlLemmingsLow], DstRect, SrcRect)
+  else
+    SrcAnim.DrawTo(fLayers[rlLemmingsHigh], DstRect, SrcRect);
 
   // Helper for selected lemming
   if (Selected and aLemming.CannotReceiveSkills) or UsefulOnly or
@@ -560,37 +589,37 @@ begin
         end;
     end;
 
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y,
       Target.X, Target.Y,
       LaserColors[0], true);
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y - 1,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y - 1,
       Target.X - aLemming.LemDX, Target.Y,
       LaserColors[0], true);
-    fLayers[rlLemmings].LineS(Origin.X + aLemming.LemDX, Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X + aLemming.LemDX, Origin.Y,
       Target.X, Target.Y + 1,
       LaserColors[0], true);
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y - 2,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y - 2,
       Target.X - (aLemming.LemDX * 2), Target.Y,
       LaserColors[1], true);
-    fLayers[rlLemmings].LineS(Origin.X + (aLemming.LemDX * 2), Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X + (aLemming.LemDX * 2), Origin.Y,
       Target.X, Target.Y + 2,
       LaserColors[1], true);
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y - 3,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y - 3,
       Target.X - (aLemming.LemDX * 3), Target.Y,
       LaserColors[2], true);
-    fLayers[rlLemmings].LineS(Origin.X + (aLemming.LemDX * 3), Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X + (aLemming.LemDX * 3), Origin.Y,
       Target.X, Target.Y + 3,
       LaserColors[2], true);
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y - 4,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y - 4,
       Target.X - (aLemming.LemDX * 4), Target.Y,
       LaserColors[3], true);
-    fLayers[rlLemmings].LineS(Origin.X + (aLemming.LemDX * 4), Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X + (aLemming.LemDX * 4), Origin.Y,
       Target.X, Target.Y + 4,
       LaserColors[3], true);
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y - 5,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y - 5,
       Target.X - (aLemming.LemDX * 5), Target.Y,
       LaserColors[4], true);
-    fLayers[rlLemmings].LineS(Origin.X + (aLemming.LemDX * 5), Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X + (aLemming.LemDX * 5), Origin.Y,
       Target.X, Target.Y + 5,
       LaserColors[4], true);
   end else begin
@@ -613,19 +642,19 @@ begin
 
     // LaserColors[3] and [4] are unused in low-res
 
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y,
       Target.X, Target.Y,
       LaserColors[0], true);
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y - 1,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y - 1,
       Target.X - aLemming.LemDX, Target.Y,
       LaserColors[1], true);
-    fLayers[rlLemmings].LineS(Origin.X + aLemming.LemDX, Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X + aLemming.LemDX, Origin.Y,
       Target.X, Target.Y + 1,
       LaserColors[1], true);
-    fLayers[rlLemmings].LineS(Origin.X, Origin.Y - 2,
+    fLayers[rlLemmingsHigh].LineS(Origin.X, Origin.Y - 2,
       Target.X - (aLemming.LemDX * 2), Target.Y,
       LaserColors[2], true);
-    fLayers[rlLemmings].LineS(Origin.X + (aLemming.LemDX * 2), Origin.Y,
+    fLayers[rlLemmingsHigh].LineS(Origin.X + (aLemming.LemDX * 2), Origin.Y,
       Target.X, Target.Y + 2,
       LaserColors[2], true);
   end;
@@ -656,7 +685,7 @@ begin
       if BLAST_COLORS[CIndex] <> $00000000 then
       begin
         fFixedDrawColor := BLAST_COLORS[CIndex];
-        fLaserGraphic.DrawTo(fLayers[rlLemmings], Dst, Src);
+        fLaserGraphic.DrawTo(fLayers[rlLemmingsHigh], Dst, Src);
       end;
 
       MoveRect(Src, -13 * ResMod, 0);
@@ -667,17 +696,53 @@ begin
     end;
 
     fFixedDrawColor := WHITE_COLOR;
-    fLaserGraphic.DrawTo(fLayers[rlLemmings], Dst, Src);
+    fLaserGraphic.DrawTo(fLayers[rlLemmingsHigh], Dst, Src);
   end;
 end;
 
+procedure TRenderer.DrawFreezingOverlay(L: TLemming);
+var
+FrameIndex: Integer;
+FrameRect: TRect;
+begin
+  FrameIndex := (8 - L.LemFreezingTimer) mod 8;
+
+  FrameRect.Left := 0;
+  FrameRect.Right := FrameRect.Left + 16 * ResMod;
+  FrameRect.Top := FrameIndex * (10 * ResMod);
+  FrameRect.Bottom := FrameRect.Top + (10 * ResMod);
+
+  if L.LemDX < 0 then
+    fAni.FreezingOverlay.DrawTo(fLayers[rlFreezerHigh], (L.LemX - 8) * ResMod, (L.LemY - 10) * ResMod, FrameRect)
+  else
+    fAni.FreezingOverlay.DrawTo(fLayers[rlFreezerHigh], (L.LemX - 7) * ResMod, (L.LemY - 10) * ResMod, FrameRect);
+end;
+
+procedure TRenderer.DrawUnfreezingOverlay(L: TLemming);
+var
+FrameIndex: Integer;
+FrameRect: TRect;
+begin
+  FrameIndex := (12 - L.LemUnfreezingTimer) mod 12;
+
+  FrameRect.Left := 0;
+  FrameRect.Right := FrameRect.Left + 16 * ResMod;
+  FrameRect.Top := FrameIndex * (10 * ResMod);
+  FrameRect.Bottom := FrameRect.Top + (10 * ResMod);
+
+  if L.LemDX < 0 then
+    fAni.UnfreezingOverlay.DrawTo(fLayers[rlFreezerHigh], (L.LemX - 8) * ResMod, (L.LemY - 10) * ResMod, FrameRect)
+  else
+    fAni.UnfreezingOverlay.DrawTo(fLayers[rlFreezerHigh], (L.LemX - 7) * ResMod, (L.LemY - 10) * ResMod, FrameRect);
+end;
 
 //This code is used (or not) by Nuke, Bomber, Freezer and Timebomber
 procedure TRenderer.DrawLemmingCountdown(aLemming: TLemming);
 var
   ShowCountdown, ShowHighlight: Boolean;
   SrcRect: TRect;
-  n: Integer;
+  n, tensDigit, onesDigit: Integer;
+  xPosition: Integer;
 begin
   if aLemming.LemRemoved then Exit;
 
@@ -690,13 +755,46 @@ begin
   if ShowCountdown then
   begin
     n := (aLemming.LemExplosionTimer div 17) + 1;
-    SrcRect := SizedRect(n * 6 * ResMod, 0, 6 * ResMod, 5 * ResMod);
-    if aLemming.LemDX < 0 then
-      fAni.CountDownDigitsBitmap.DrawTo(fLayers[rlLemmings], (aLemming.LemX - 3) * ResMod, (aLemming.LemY - 17) * ResMod, SrcRect)
-    else
-      fAni.CountDownDigitsBitmap.DrawTo(fLayers[rlLemmings], (aLemming.LemX - 2) * ResMod, (aLemming.LemY - 17) * ResMod, SrcRect);
-  end else if ShowHighlight then
-    fAni.HighlightBitmap.DrawTo(fLayers[rlLemmings], (aLemming.LemX - 2) * ResMod, (aLemming.LemY - 20) * ResMod);
+
+    // Extract tens and ones digit from n
+    tensDigit := n div 10;
+    onesDigit := n mod 10;
+
+    // Calculate X-coordinate for drawing
+    if tensDigit = 0 then
+    begin
+      if aLemming.LemDX < 0 then
+        xPosition := (aLemming.LemX - 3) * ResMod  // Center single-digit for left-facing lem
+      else
+        xPosition := (aLemming.LemX - 2) * ResMod; // Center single-digit
+    end else if tensDigit = 1 then
+    begin
+      if aLemming.LemDX < 0 then
+        xPosition := (aLemming.LemX - 6) * ResMod  // Center "1"-leading double-digit for left-facing lem
+      else
+        xPosition := (aLemming.LemX - 5) * ResMod; // Center "1"-leading double-digit
+    end else if aLemming.LemDX < 0 then
+        xPosition := (aLemming.LemX - 7) * ResMod  // Center all other double-digits for left-facing lem
+      else
+        xPosition := (aLemming.LemX - 6) * ResMod; // Center all other double-digits
+
+    // Draw tens digit
+    if tensDigit <> 0 then
+    begin
+      SrcRect := SizedRect(tensDigit * 6 * ResMod, 0, 6 * ResMod, 5 * ResMod);
+      fAni.CountDownDigitsBitmap.DrawTo(fLayers[rlCountdown], xPosition, (aLemming.LemY - 17) * ResMod, SrcRect);
+      if tensDigit = 1 then
+        Inc(xPosition, 6 * ResMod)
+      else
+        Inc(xPosition, 7 * ResMod); // Nudge the second digit across, add 1px space
+    end;
+
+    // Draw ones digit
+    SrcRect := SizedRect(onesDigit * 6 * ResMod, 0, 6 * ResMod, 5 * ResMod);
+    fAni.CountDownDigitsBitmap.DrawTo(fLayers[rlCountdown], xPosition, (aLemming.LemY - 17) * ResMod, SrcRect);
+  end
+  else if ShowHighlight then
+    fAni.HighlightBitmap.DrawTo(fLayers[rlCountdown], (aLemming.LemX - 2) * ResMod, (aLemming.LemY - 20) * ResMod);
 end;
 
 procedure TRenderer.DrawLemmingParticles(L: TLemming);
@@ -713,9 +811,9 @@ begin
       X := L.LemX + X;
       Y := L.LemY + Y;
       if fIsFreezerExplosion then
-      fLayers[rlParticles].PixelS[X, Y] := PARTICLE_FREEZER_COLORS[i mod 8]
+        fLayers[rlParticles].PixelS[X, Y] := PARTICLE_FREEZER_COLORS[i mod 8]
       else
-      fLayers[rlParticles].PixelS[X, Y] := PARTICLE_COLORS[i mod 8];
+        fLayers[rlParticles].PixelS[X, Y] := PARTICLE_COLORS[i mod 8];
     end;
   end;
 
@@ -877,7 +975,6 @@ begin
         if CopyL.LemAction in [baJumping, baDangling] then
           fRenderInterface.SimulateTransitionLem(CopyL, baShimmying)
         else
-        if CopyL.LemAction in [baClimbing] then
           fRenderInterface.SimulateTransitionLem(CopyL, baReaching);
         DrawShimmierShadow(CopyL);
       end;
@@ -985,37 +1082,55 @@ begin
     for i := 0 to fRenderInterface.ProjectileList.Count-1 do
       DrawThisProjectile(fRenderInterface.ProjectileList[i]);
   end;
-
 end;
 
-procedure TRenderer.DrawThisProjectile(aProjectile: TProjectile);
+procedure TRenderer.DrawThisProjectile(P: TProjectile);
 var
-  Graphic: TProjectileGraphic;
-  SrcRect: TRect;
-  Hotspot: TPoint;
-  Target: TPoint;
+  SrcRectSpear: TRect;
+  SrcRectGrenade: TRect;
+  SpearHotspot: TPoint;
+  GrenadeHotspot: TPoint;
+  SpearTarget: TPoint;
+  GrenadeTarget: TPoint;
 begin
-  Graphic := aProjectile.Graphic;
-  SrcRect := PROJECTILE_GRAPHIC_RECTS[Graphic];
-  Hotspot := aProjectile.Hotspot;
-  Target := Point(aProjectile.X, aProjectile.Y);
+  SrcRectSpear := SPEAR_GRAPHIC_RECTS[P.SpearGraphic];
+  SrcRectGrenade := GRENADE_GRAPHIC_RECTS[P.GrenadeGraphic];
+  SpearHotspot := P.SpearHotspot;
+  GrenadeHotspot := P.GrenadeHotspot;
+  SpearTarget := Point(P.X, P.Y);
+  GrenadeTarget := Point(P.X, P.Y);
 
   if GameParams.HighResolution then
   begin
-    SrcRect.Left := SrcRect.Left * 2;
-    SrcRect.Top := SrcRect.Top * 2;
-    SrcRect.Right := SrcRect.Right * 2;
-    SrcRect.Bottom := SrcRect.Bottom * 2;
-    Hotspot.X := Hotspot.X * 2;
-    Hotspot.Y := Hotspot.Y * 2;
-    Target.X := Target.X * 2;
-    Target.Y := Target.Y * 2;
+    SrcRectSpear.Left := SrcRectSpear.Left * 2;
+    SrcRectSpear.Top := SrcRectSpear.Top * 2;
+    SrcRectSpear.Right := SrcRectSpear.Right * 2;
+    SrcRectSpear.Bottom := SrcRectSpear.Bottom * 2;
+
+    SrcRectGrenade.Left := SrcRectGrenade.Left * 2;
+    SrcRectGrenade.Top := SrcRectGrenade.Top * 2;
+    SrcRectGrenade.Right := SrcRectGrenade.Right * 2;
+    SrcRectGrenade.Bottom := SrcRectGrenade.Bottom * 2;
+
+    SpearHotspot.X := SpearHotspot.X * 2;
+    SpearHotspot.Y := SpearHotspot.Y * 2;
+    SpearTarget.X := SpearTarget.X * 2;
+    SpearTarget.Y := SpearTarget.Y * 2;
+
+    GrenadeHotspot.X := GrenadeHotspot.X * 2;
+    GrenadeHotspot.Y := GrenadeHotspot.Y * 2;
+    GrenadeTarget.X := GrenadeTarget.X * 2;
+    GrenadeTarget.Y := GrenadeTarget.Y * 2;
   end;
 
-  if Graphic = pgGrenadeExplode then
-    fProjectileImage.DrawTo(fLayers[rlLemmings], Target.X - Hotspot.X, Target.Y - Hotspot.Y, SrcRect)
-  else
-    fProjectileImage.DrawTo(fLayers[rlProjectiles], Target.X - Hotspot.X, Target.Y - Hotspot.Y, SrcRect);
+  if P.IsGrenade then
+  begin
+    if P.GrenadeGraphic = pgGrenadeExplode then
+      fGrenadeImage.DrawTo(fLayers[rlLemmingsLow], GrenadeTarget.X - GrenadeHotspot.X, GrenadeTarget.Y - GrenadeHotspot.Y, SrcRectGrenade)
+    else
+      fGrenadeImage.DrawTo(fLayers[rlProjectiles], GrenadeTarget.X - GrenadeHotspot.X, GrenadeTarget.Y - GrenadeHotspot.Y, SrcRectGrenade);
+  end else
+    fSpearImage.DrawTo(fLayers[rlProjectiles], SpearTarget.X - SpearHotspot.X, SpearTarget.Y - SpearHotspot.Y, SrcRectSpear);
 end;
 
 procedure TRenderer.DrawProjectionShadow(L: TLemming);
@@ -1535,8 +1650,14 @@ begin
 
   for i := 0 to Length(FreezerShadow) - 1 do
   begin
+  if L.LemIsSwimmer then
+  begin
+    SetLowShadowPixel(PosX + FreezerShadow[i, 0], (L.LemY +2) + FreezerShadow[i, 1]);
+    SetLowShadowPixel(PosX - FreezerShadow[i, 0] - 1, (L.LemY +2) + FreezerShadow[i, 1]);
+  end else begin
     SetLowShadowPixel(PosX + FreezerShadow[i, 0], L.LemY + FreezerShadow[i, 1]);
     SetLowShadowPixel(PosX - FreezerShadow[i, 0] - 1, L.LemY + FreezerShadow[i, 1]);
+  end;
   end;
 end;
 
@@ -1726,14 +1847,12 @@ end;
 
 procedure TRenderer.AddSpear(P: TProjectile);
 var
-  Graphic: TProjectileGraphic;
   SrcRect: TRect;
   Hotspot: TPoint;
   Target: TPoint;
 begin
-  Graphic := P.Graphic;
-  SrcRect := PROJECTILE_GRAPHIC_RECTS[Graphic];
-  Hotspot := P.Hotspot;
+  SrcRect := SPEAR_GRAPHIC_RECTS[P.SpearGraphic];
+  Hotspot := P.SpearHotspot;
   Target := Point(P.X, P.Y);
 
   if GameParams.HighResolution then
@@ -1748,7 +1867,7 @@ begin
     Target.Y := Target.Y * 2;
   end;
 
-  fProjectileImage.DrawTo(fLayers[rlTerrain], Target.X - Hotspot.X, Target.Y - Hotspot.Y, SrcRect);
+  fSpearImage.DrawTo(fLayers[rlTerrain], Target.X - Hotspot.X, Target.Y - Hotspot.Y, SrcRect);
 end;
 
 procedure TRenderer.AddFreezer(X, Y: Integer);
@@ -1868,7 +1987,7 @@ begin
     end;
   end else begin
     dstSolidity := CombineTerrainSolidity(srcSolidity, dstSolidity);
-    dstSteel := CombineTerrainProperty(srcSteel, dstSteel, srcSolidity);
+    dstSteel := CombineTerrainProperty(srcSteel, dstSteel, srcSteel);
     dstOneWay := CombineTerrainProperty(srcOneWay, dstOneWay, srcSolidity);
   end;
 
@@ -2273,37 +2392,50 @@ begin
     fPhysicsRenderingType := prtStandard;
 end;
 
+//procedure TRenderer.UpdateVisualSFXTimer;
+//begin
+//  if VisualSFXTimer > 0 then
+//    Dec(fVisualSFXTimer);
+//end;
 
-procedure TRenderer.DrawVisualSFX(Dst: TBitmap32; Gadget: TGadget; Lemming: TLemming);
+//procedure TRenderer.DrawVisualSFXLemmings(L: TLemming);
+//var
+//  DrawX, DrawY: Integer;
+//begin
+//  // Set base drawing position at lem foot position
+//  DrawX := L.LemX;
+//  DrawY := L.LemY;
+//
+//  if (VisualSFXTimer > 0) and not L.LemIsPhysicsSimulation then
+//  begin
+//    if (L.LemAction in [baBuilding, baPlatforming, baStacking]) and (L.LemFrame > 10) then
+//      fVisualSFXImages[vfx_chink].DrawTo(fLayers[rlCountdown], DrawX, (DrawY - 20) * ResMod);
+//  end;
+//end;
+//
+//procedure TRenderer.DrawVisualSFXGadgets(G: TGadget);
 //var
 //  MO: TGadgetMetaAccessor;
 //  DrawX, DrawY: Integer;
-//  ElapsedTime: Cardinal;
-begin
-//  MO := Gadget.MetaObj;
+//  NudgeX: Integer;
+//begin
+//  MO := G.MetaObj;
 //
-//  // Set base drawing position
-//  DrawX := (Gadget.Left + (Gadget.Width div 4)) * ResMod;
-//  DrawY := (Gadget.TriggerRect.Top) * ResMod;
+//  // Set base drawing position in centre of object's trigger area
+//  DrawX := G.TriggerRect.Left + (G.TriggerRect.Width div 2);
+//  DrawY := G.TriggerRect.Top + (G.TriggerRect.Height div 2);
 //
-//  ElapsedTime := GetTickCount - fStartTime; //fStartTime set during Create procedure for now
-                                              //this does make the graphic only display for 4000ms
-                                              //but, it starts it from the preview screen
-                                              //so - we need to find a way to start displaying the
-                                              //graphic when it's actually relevant
-//
-//  // Draw image if less than 4 seconds have passed
-//  if GetTickCount - fStartTime < 4000 then  //works (ish), but we need to be able to set the start time correctly
+//  if VisualSFXTimer > 0 then
 //  begin
 //    case MO.TriggerEffect of
 //      DOM_WINDOW:
-//      begin
-//        fVisualSFXImages[vfx_letsgo].DrawTo(Dst, Dst.Width div 2 -(25 * ResMod), Dst.Height div 2);
-//      end;
+//        begin
+//          NudgeX := fVisualSFXImages[vfx_letsgo].Width div 2;
+//          fVisualSFXImages[vfx_letsgo].DrawTo(fLayers[rlObjectHelpers], (DrawX - NudgeX) * ResMod, (DrawY + 4) * ResMod);
+//        end;
 //    end;
 //  end;
-end;
-
+//end;
 
 procedure TRenderer.DrawObjectHelpers(Dst: TBitmap32; Gadget: TGadget);
 var
@@ -2441,6 +2573,21 @@ begin
       DOM_VINEWATER:
         begin
           fHelperImages[hpi_Vinewater].DrawTo(Dst, DrawX - 16 * ResMod, DrawY);
+        end;
+
+      DOM_POISON:
+        begin
+          fHelperImages[hpi_Poison].DrawTo(Dst, DrawX - 16 * ResMod, DrawY);
+        end;
+
+      DOM_RADIATION:
+        begin
+          fHelperImages[hpi_Radiation].DrawTo(Dst, DrawX - 16 * ResMod, DrawY);
+        end;
+
+      DOM_SLOWFREEZE:
+        begin
+          fHelperImages[hpi_Slowfreeze].DrawTo(Dst, DrawX - 16 * ResMod, DrawY);
         end;
     end;
 end;
@@ -2814,44 +2961,72 @@ begin
   fHelpersAreHighRes := GameParams.HighResolution;
 end;
 
-procedure TRenderer.LoadProjectileImages;
+procedure TRenderer.LoadGrenadeImages;
+var
+CustomStyle: String;
+CustomProjectileImages: String;
+HRCustomProjectileImages: String;
+begin
+  CustomStyle := GameParams.Level.Info.GraphicSetName;
+
+  CustomProjectileImages := AppPath + SFStyles + CustomStyle + SFPiecesGrenades + 'grenades.png';
+  HRCustomProjectileImages := AppPath + SFStyles + CustomStyle + SFPiecesGrenades + 'grenades-hr.png';
+
+  if (FileExists(CustomProjectileImages) and FileExists(HRCustomProjectileImages)) then
+  begin
+    if GameParams.HighResolution then
+      TPngInterface.LoadPngFile(HRCustomProjectileImages, fGrenadeImage)
+    else
+      TPngInterface.LoadPngFile(CustomProjectileImages, fGrenadeImage);
+  end else
+
+  if GameParams.HighResolution then
+    TPngInterface.LoadPngFile(AppPath + SFStyles + SFDefaultStyle + SFPiecesGrenades + 'grenades-hr.png', fGrenadeImage)
+  else
+    TPngInterface.LoadPngFile(AppPath + SFStyles + SFDefaultStyle + SFPiecesGrenades + 'grenades.png', fGrenadeImage);
+
+  fGrenadeImage.DrawMode := dmCustom;
+  fGrenadeImage.OnPixelCombine := CombineTerrainNoOverwrite;
+end;
+
+procedure TRenderer.LoadSpearImages;
 begin
   if GameParams.HighResolution then
-    TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'projectiles-hr.png', fProjectileImage)
+    TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'spears-hr.png', fSpearImage)
   else
-    TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'projectiles.png', fProjectileImage);
+    TPngInterface.LoadPngFile(AppPath + SFGraphicsMasks + 'spears.png', fSpearImage);
 
     if fTheme <> nil then
-    DoProjectileRecolor(fProjectileImage, fTheme.Colors['MASK']);
+    DoProjectileRecolor(fSpearImage, fTheme.Colors['MASK']);
 
-  fProjectileImage.DrawMode := dmCustom;
-  fProjectileImage.OnPixelCombine := CombineTerrainNoOverwrite;
+  fSpearImage.DrawMode := dmCustom;
+  fSpearImage.OnPixelCombine := CombineTerrainNoOverwrite;
 end;
 
-procedure TRenderer.LoadVisualSFXImages;
-var
-  i: TVisualSFX;
-begin
-  for i := Low(TVisualSFX) to High(TVisualSFX) do
-  begin
-    if i = vfx_blank then Continue;
-    if fVisualSFXImages[i] <> nil then
-      fVisualSFXImages[i].Free;
-
-    fVisualSFXImages[i] := TBitmap32.Create;
-
-    if GameParams.HighResolution and FileExists(AppPath + SFVisualSFXHighRes + VisualSFXFilenames[i]) then
-      TPngInterface.LoadPngFile(AppPath + SFVisualSFXHighRes + VisualSFXFilenames[i], fVisualSFXImages[i])
-    else
-    if FileExists(AppPath + SFGraphicsHelpers + VisualSFXFilenames[i]) then
-      TPngInterface.LoadPngFile(AppPath + SFGraphicsHelpers + VisualSFXFilenames[i], fVisualSFXImages[i]);
-
-    fVisualSFXImages[i].DrawMode := dmBlend;
-    fVisualSFXImages[i].CombineMode := cmMerge;
-  end;
-
-  fVisualSFXAreHighRes := GameParams.HighResolution;
-end;
+//procedure TRenderer.LoadVisualSFXImages;
+//var
+//  i: TVisualSFX;
+//begin
+//  for i := Low(TVisualSFX) to High(TVisualSFX) do
+//  begin
+//    if i = vfx_blank then Continue;
+//    if fVisualSFXImages[i] <> nil then
+//      fVisualSFXImages[i].Free;
+//
+//    fVisualSFXImages[i] := TBitmap32.Create;
+//
+//    if GameParams.HighResolution and FileExists(AppPath + SFVisualSFXHighRes + VisualSFXFilenames[i]) then
+//      TPngInterface.LoadPngFile(AppPath + SFVisualSFXHighRes + VisualSFXFilenames[i], fVisualSFXImages[i])
+//    else
+//    if FileExists(AppPath + SFGraphicsHelpers + VisualSFXFilenames[i]) then
+//      TPngInterface.LoadPngFile(AppPath + SFGraphicsHelpers + VisualSFXFilenames[i], fVisualSFXImages[i]);
+//
+//    fVisualSFXImages[i].DrawMode := dmBlend;
+//    fVisualSFXImages[i].CombineMode := cmMerge;
+//  end;
+//
+//  fVisualSFXAreHighRes := GameParams.HighResolution;
+//end;
 
 procedure TRenderer.DrawGadgetsOnLayer(aLayer: TRenderLayer);
 var
@@ -2971,6 +3146,9 @@ begin
 
     if DrawOtherHatchHelper and not GameParams.HideHelpers then
       DrawObjectHelpers(fLayers[rlObjectHelpers], Gadget);
+
+    ////hotbookmark - not ready yet, but this is the place to call it from
+    //DrawVisualSFXGadgets(Gadget);
 
     if fUsefulOnly then
     begin
@@ -3137,12 +3315,13 @@ begin
   fTheme := TNeoTheme.Create;
   fLayers := TRenderBitmaps.Create;
   fPhysicsMap := TBitmap32.Create;
-  fProjectileImage := TBitmap32.Create;
+  fGrenadeImage := TBitmap32.Create;
+  fSpearImage := TBitmap32.Create;
   fBgColor := $00000000;
   fAni := TBaseAnimationSet.Create;
   fPreviewGadgets := TGadgetList.Create;
   fTempLemmingList := TLemmingList.Create(false);
-  fStartTime := GetTickCount; //hotbookmark - this seems to start the timer on the preview screen ???
+  //fStartTime := GetTickCount; //hotbookmark - this seems to start the timer on the preview screen ???
 
   fLaserGraphic := TBitmap32.Create;
   fLaserGraphic.DrawMode := dmCustom;
@@ -3165,7 +3344,8 @@ var
   iIcon: THelperIcon;
 begin
   TempBitmap.Free;
-  fProjectileImage.Free;
+  fGrenadeImage.Free;
+  fSpearImage.Free;
   fTheme.Free;
   fLayers.Free;
   fPhysicsMap.Free;
@@ -3567,15 +3747,16 @@ begin
   if GameParams.HighResolution <> fHelpersAreHighRes and not GameParams.HideHelpers then
     LoadHelperImages;
 
-  if GameParams.HighResolution <> fVisualSFXAreHighRes then
-    LoadVisualSFXImages;
+//  if GameParams.HighResolution <> fVisualSFXAreHighRes then
+//    LoadVisualSFXImages;
 
   RenderInfoRec.Level := aLevel;
 
   fTheme.Load(aLevel.Info.GraphicSetName);
   PieceManager.SetTheme(fTheme);
 
-  LoadProjectileImages;
+  LoadGrenadeImages;
+  LoadSpearImages;
 
   fAni.ClearData;
   fAni.Theme := fTheme;

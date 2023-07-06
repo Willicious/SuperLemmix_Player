@@ -102,6 +102,11 @@ const
 { TLevelInfoPanel }
 
 constructor TLevelInfoPanel.Create(aOwner: TComponent; aIconBMP: TBitmap32; fTalismanOverrideBMP: TBitmap32 = nil);
+var
+IconsImg: String;
+aStyle: String;
+aStylePath: String;
+aPath: String;
 begin
   inherited Create(aOwner);
 
@@ -112,7 +117,18 @@ begin
   if aIconBMP = nil then
   begin
     fIcons := TBitmap32.Create;
-    TPNGInterface.LoadPngFile(AppPath + SFGraphicsMenu + 'levelinfo_icons.png', fIcons);
+
+    IconsImg := 'levelinfo_icons.png';
+    aStyle := GameParams.Level.Info.GraphicSetName;
+    aStylePath := AppPath + SFStyles + aStyle + '\levelinfo\';
+    aPath := GameParams.CurrentLevel.Group.ParentBasePack.Path;
+
+    if FileExists(aStylePath + IconsImg) then //check styles folder first
+      TPNGInterface.LoadPngFile(aStylePath + IconsImg, fIcons)
+    else if FileExists(GameParams.CurrentLevel.Group.FindFile(IconsImg)) then //then levelpack folder
+      TPNGInterface.LoadPngFile(aPath + IconsImg, fIcons)
+    else
+      TPNGInterface.LoadPngFile(AppPath + SFGraphicsMenu + IconsImg, fIcons);
     fIcons.DrawMode := dmBlend;
     fOwnIcons := true;
   end else if fTalismanOverrideBMP <> nil then
@@ -563,6 +579,12 @@ procedure TLevelInfoPanel.ShowPopup;
 
       if (Talisman.RequireKillZombies) then
         LocalAdd(ICON_KILL_ZOMBIES, '', false, pmMoveHorz);
+
+      if (Talisman.RequireClassicMode) then
+        LocalAdd(ICON_CLASSIC_MODE, '', false, pmMoveHorz);
+
+      if (Talisman.RequireNoPause) then
+        LocalAdd(ICON_NO_PAUSE, '', false, pmMoveHorz);
   end;
 
   procedure RepositionExistingControls(aNewWidth: Integer);
@@ -620,8 +642,9 @@ begin
     AddClose;
     ApplySize;
 
-    Left := TForm(Owner).Left + ((TForm(Owner).Width - Width) div 2);
+    Left := (Screen.Width - Width) div 2;
     Top := TForm(Owner).Top + ((TForm(Owner).Height - Height) div 2);
+
     ShowModal;
   end;
 end;
@@ -658,6 +681,12 @@ begin
     else
       Add(ICON_ZOMBIE_LEMMING, fLevel.Info.ZombieCount, '', true, pmNextColumnSame);
   end;
+
+  if ((fTalisman <> nil) and (fTalisman.RequireClassicMode)) then
+      Add(ICON_CLASSIC_MODE, '', '', true, pmNextColumnSame);
+
+  if ((fTalisman <> nil) and (fTalisman.RequireNoPause)) then
+      Add(ICON_NO_PAUSE, '', '', true, pmNextColumnSame);
 
   Reposition(pmNextRowLeft);
 
