@@ -20,16 +20,16 @@ const
 
 
 
-//  GAME_BMPWIDTH = 1664; // this is too far I think, but now it fits with the minimap!
+//  GAME_BMPWIDTH = 1664; // This is too far I think, but now it fits with the minimap!
 
   { the original dos lemmings show pixels 0 through 1583 (so including pixel 1583)
     so the imagewidth should be 1584, which means 80 pixels less then 1664
 
 
   MiniMapBounds: TRect = (
-    Left: 208;   // width =about 100
+    Left: 208;   // Width =about 100
     Top: 18;
-    Right: 311;  // height =about 20
+    Right: 311;  // Height =about 20
     Bottom: 37
   );
   *)
@@ -38,57 +38,61 @@ const
 
 
 
-  clMask32  = $00FF00FF; // color used for "shape-only" masks
+  clMask32  = $00FF00FF; // Color used for "shape-only" masks
 
 {•}
 
 type
-  TBasicLemmingAction = (   //needs to match TBasicLemmingAction in LemStrings
-    baNone,            //1
-    baWalking,         //2
-    baAscending,       //3
-    baDigging,         //4
-    baClimbing,        //5
-    baDrowning,        //6
-    baHoisting,        //7
-    baBuilding,        //8
-    baBashing,         //9
-    baMining,          //10
-    baFalling,         //11
-    baFloating,        //12
-    baSplatting,       //13
-    baExiting,         //14
-    baVaporizing,      //15
-    baVinetrapping,    //16
-    baBlocking,        //17
-    baShrugging,       //18
-    baTimebombing,     //19
-    baTimebombFinish,  //20
-    baOhnoing,         //21
-    baExploding,       //22
-    baToWalking,       //23
-    baPlatforming,     //24
-    baStacking,        //25
-    baFreezing,        //26
-    baFreezerExplosion,//27
-    baFrozen,          //28
-    baUnfreezing,      //29
-    baSwimming,        //30
-    baGliding,         //31
-    baFixing,          //32
-    baCloning,         //33
-    baFencing,         //34
-    baReaching,        //35
-    baShimmying,       //36
-    baJumping,         //37
-    baDehoisting,      //38
-    baSliding,         //39
-    baDangling,        //40
-    baSpearing,        //41
-    baGrenading,       //42
-    baLooking,         //43
-    baLasering,        //44
-    baSleeping         //45
+  TBasicLemmingAction = (   // Needs to match TBasicLemmingAction in LemStrings
+    baNone,            // 1
+    baWalking,         // 2
+    baZombieWalking,   // 3
+    baAscending,       // 4
+    baDigging,         // 5
+    baClimbing,        // 6
+    baDrowning,        // 7
+    baHoisting,        // 8
+    baBuilding,        // 9
+    baBashing,         // 10
+    baMining,          // 11
+    baFalling,         // 12
+    baFloating,        // 13
+    baSplatting,       // 14
+    baExiting,         // 15
+    baVaporizing,      // 16
+    baVinetrapping,    // 17
+    baBlocking,        // 18
+    baShrugging,       // 19
+    baTimebombing,     // 20
+    baTimebombFinish,  // 21
+    baOhnoing,         // 22
+    baExploding,       // 23
+    baToWalking,       // 24
+    baPlatforming,     // 25
+    baStacking,        // 26
+    baFreezing,        // 27
+    baFreezerExplosion,// 28
+    baFrozen,          // 29
+    baUnfreezing,      // 30
+    baSwimming,        // 31
+    baGliding,         // 32
+    baFixing,          // 33
+    baCloning,         // 34
+    baFencing,         // 35
+    baReaching,        // 36
+    baShimmying,       // 37
+    baJumping,         // 38
+    baDehoisting,      // 39
+    baSliding,         // 40
+    baDangling,        // 41
+    baSpearing,        // 42
+    baGrenading,       // 43
+    baLooking,         // 44
+    baLasering,        // 45
+    baBallooning,      // 46
+    baLaddering,       // 47
+    baDrifting,        // 48
+    baSleeping         // 49
   );
 
 const
@@ -101,6 +105,7 @@ type
     spbWalker,
     spbJumper,
     spbShimmier,
+    spbBallooner,
     spbSlider,
     spbClimber,
     spbSwimmer,
@@ -111,6 +116,7 @@ type
     spbBomber,
     spbFreezer,
     spbBlocker,
+    spbLadderer,
     spbPlatformer,
     spbBuilder,
     spbStacker,
@@ -141,6 +147,7 @@ const
     'walker',
     'jumper',
     'shimmier',
+    'ballooner',
     'slider',
     'climber',
     'swimmer',
@@ -151,6 +158,7 @@ const
     'bomber',
     'freezer',
     'blocker',
+    'ladderer',
     'platformer',
     'builder',
     'stacker',
@@ -168,6 +176,7 @@ const
     'walkers',
     'jumpers',
     'shimmiers',
+    'ballooners',
     'sliders',
     'climbers',
     'swimmers',
@@ -178,6 +187,7 @@ const
     'bombers',
     'freezers',
     'blockers',
+    'ladderers',
     'platformers',
     'builders',
     'stackers',
@@ -193,11 +203,11 @@ const
 
 type
   TTriggerTypes = (
-    trExit,       // as well for locked exits, once all buttons are pressed
-    trForceLeft,  // as well for blockers
-    trForceRight, // as well for blockers
-    trTrap,       // for triggered and one-time traps
-    trAnim,       // ditto for triggered animations
+    trExit,       // As well for locked exits, once all buttons are pressed
+    trForceLeft,  // As well for blockers
+    trForceRight, // As well for blockers
+    trTrap,       // For triggered and one-time traps
+    trAnim,       // Ditto for triggered animations
     trWater,
     trFire,
     trOWLeft,
@@ -205,7 +215,7 @@ type
     trOWDown,
     trOWUp,
     trSteel,
-    trBlocker,    // total blocker area!
+    trBlocker,    // Total blocker area!
     trTeleport,
     trPickup,
     trButton,
@@ -247,140 +257,149 @@ const
     baSliding,
     baSpearing,
     baGrenading,
-    baLasering
+    baLasering,
+    baBallooning,
+    baLaddering
   ];
 
 const
   ActionToSkillPanelButton: array[TBasicLemmingAction] of TSkillPanelButton = (
-    spbNone,        //1   baNone
-    spbWalker,      //2   baWalk
-    spbNone,        //3   baAscending
-    spbDigger,      //4   baDigging
-    spbClimber,     //5   baClimbing
-    spbNone,        //6   baHoisting
-    spbNone,        //7   baDrowning
-    spbBuilder,     //8   baBricklaying
-    spbBasher,      //9   baBashing
-    spbMiner,       //10  baMining
-    spbNone,        //11  baFalling
-    spbFloater,     //12  baUmbrella
-    spbNone,        //13  baSplatting
-    spbNone,        //14  baExiting
-    spbNone,        //15  baVaporizing
-    spbNone,        //16  baVinetrapping
-    spbBlocker,     //17  baBlocking
-    spbNone,        //18  baShrugging
-    spbTimebomber,  //19  baTimebombing
-    spbNone,        //20  baTimebombFinish
-    spbNone,        //21  baOhNoing
-    spbBomber,      //22  baExploding
-    spbWalker,      //23
-    spbPlatformer,  //24
-    spbStacker,     //25
-    spbFreezer,     //26  baFreezing
-    spbNone,        //27  baFreezerExplosion
-    spbNone,        //28  baFrozen
-    spbNone,        //29  baUnfreezing
-    spbSwimmer,     //30
-    spbGlider,      //31
-    spbDisarmer,    //32
-    spbCloner,      //33
-    spbFencer,      //34
-    spbNone,        //35 baReaching
-    spbShimmier,    //36
-    spbJumper,      //37
-    spbNone,        //38 baDehoisting
-    spbSlider,      //39
-    spbNone,        //40 baDangling
-    spbSpearer,     //41
-    spbGrenader,    //42
-    spbNone,        //43 baLooking
-    spbLaserer,     //44
-    spbNone         //45 baSleeping
+    spbNone,        // 1   baNone
+    spbWalker,      // 2   baWalking
+    spbNone,        // 3   baZombieWalking
+    spbNone,        // 4   baAscending
+    spbDigger,      // 5   baDigging
+    spbClimber,     // 6   baClimbing
+    spbNone,        // 7   baHoisting
+    spbNone,        // 8   baDrowning
+    spbBuilder,     // 9   baBricklaying
+    spbBasher,      // 10  baBashing
+    spbMiner,       // 11  baMining
+    spbNone,        // 12  baFalling
+    spbFloater,     // 13  baUmbrella
+    spbNone,        // 14  baSplatting
+    spbNone,        // 15  baExiting
+    spbNone,        // 16  baVaporizing
+    spbNone,        // 17  baVinetrapping
+    spbBlocker,     // 18  baBlocking
+    spbNone,        // 19  baShrugging
+    spbTimebomber,  // 20  baTimebombing
+    spbNone,        // 21  baTimebombFinish
+    spbNone,        // 22  baOhNoing
+    spbBomber,      // 23  baExploding
+    spbWalker,      // 24  baToWalking
+    spbPlatformer,  // 25  baPlatforming
+    spbStacker,     // 26  baStacking
+    spbFreezer,     // 27  baFreezing
+    spbNone,        // 28  baFreezerExplosion
+    spbNone,        // 29  baFrozen
+    spbNone,        // 30  baUnfreezing
+    spbSwimmer,     // 31  baSwimming
+    spbGlider,      // 32  baGliding
+    spbDisarmer,    // 33  baFixing
+    spbCloner,      // 34  baCloning
+    spbFencer,      // 35  baFencing
+    spbNone,        // 36  baReaching
+    spbShimmier,    // 37  baShimmying
+    spbJumper,      // 38  baJumping
+    spbNone,        // 39  baDehoisting
+    spbSlider,      // 40  baGliding
+    spbNone,        // 41  baDangling
+    spbSpearer,     // 42  baSpearing
+    spbGrenader,    // 43  baGrenading
+    spbNone,        // 44  baLooking
+    spbLaserer,     // 45  baLasering
+    spbBallooner,   // 46  baBallooning
+    spbLadderer,    // 47  baLaddering
+    spbNone,        // 48  baDrifting
+    spbNone         // 49  baSleeping
   );
 
 const
   SkillPanelButtonToAction: array[TSkillPanelButton] of TBasicLemmingAction = (
 
-    baToWalking, //1
-    baJumping,   //2
-    baShimmying, //3
-    baSliding,   //4
-    baClimbing,  //5
-    baSwimming,  //6
-    baFloating,  //7
-    baGliding,   //8
-    baFixing,    //9
-    baTimebombing,  //10
-    baExploding,    //11
-    baFreezing,     //12
-    baBlocking,     //13
-    baPlatforming,  //14
-    baBuilding,     //15
-    baStacking,     //16
-    baSpearing,     //17
-    baGrenading,    //18
-    baLasering,     //19
-    baBashing,      //20
-    baFencing,      //21
-    baMining,       //22
-    baDigging,      //23
-    baCloning,      //24
-    baNone, //Null
-    baNone, //RR-
-    baNone, //RR+
-    baNone, //Pause
-    baNone, //Rewind
-    baNone, //FF
-    baNone, //Restart
-    baNone, //Nuke
-    baNone  //Squiggle
+    // This needs to match the order of the skill on the panel
+    baToWalking,    // 1
+    baJumping,      // 2
+    baShimmying,    // 3
+    baBallooning,   // 4
+    baSliding,      // 5
+    baClimbing,     // 6
+    baSwimming,     // 7
+    baFloating,     // 8
+    baGliding,      // 9
+    baFixing,       // 10
+    baTimebombing,  // 11
+    baExploding,    // 12
+    baFreezing,     // 13
+    baBlocking,     // 14
+    baLaddering,    // 15
+    baPlatforming,  // 16
+    baBuilding,     // 17
+    baStacking,     // 18
+    baSpearing,     // 19
+    baGrenading,    // 20
+    baLasering,     // 21
+    baBashing,      // 22
+    baFencing,      // 23
+    baMining,       // 24
+    baDigging,      // 25
+    baCloning,      // 26
+    baNone, // Null
+    baNone, // RR-
+    baNone, // RR+
+    baNone, // Pause
+    baNone, // Rewind
+    baNone, // FF
+    baNone, // Restart
+    baNone, // Nuke
+    baNone  // Squiggle
   );
 
 const
   // All objects that don't have trigger areas got mapped to trZombie
   // This only works as long as there are no object types that create Zombie fields!!!
   ObjectTypeToTrigger: array[-1..38] of TTriggerTypes = (
-    trZombie,                 // no-object
-    trZombie,                 // no trigger area
-    trExit,                   // exit
-    trForceLeft,              // force-field left
-    trForceRight,             // force-field right
-    trTrap,                   // triggered trap
-    trWater,                  // water
-    trFire,                   // continuous trap
+    trZombie,                 // No-object
+    trZombie,                 // No trigger area
+    trExit,                   // Exit
+    trForceLeft,              // Force-field left
+    trForceRight,             // Force-field right
+    trTrap,                   // Triggered trap
+    trWater,                  // Water
+    trFire,                   // Continuous trap
     trOWLeft,                 // OWW left
     trOWRight,                // OWW right
-    trSteel,                  // steel
-    trZombie,                 // blocker (there is no blocker OBJECT!!)
-    trTeleport,               // teleporter
-    trZombie,                 // receiver
-    trZombie,                 // preplaced lemming
-    trPickup,                 // pickup skill
-    trExit,                   // locked exit
-    trZombie,                 // sketch item
-    trButton,                 // button
-    trRadiation,              // radiation
+    trSteel,                  // Steel
+    trZombie,                 // Blocker (there is no blocker OBJECT!!)
+    trTeleport,               // Teleporter
+    trZombie,                 // Receiver
+    trZombie,                 // Preplaced lemming
+    trPickup,                 // Pickup skill
+    trExit,                   // Locked exit
+    trZombie,                 // Sketch item
+    trButton,                 // Button
+    trRadiation,              // Radiation
     trOWDown,                 // OWW down
-    trUpdraft,                // updraft
-    trFlipper,                // flipper
-    trSlowfreeze,             // slowfreeze
-    trZombie,                 // hatch
-    trAnim,                   // triggered animation
-    trZombie,                 // hint
-    trNoSplat,                // no-splat
-    trSplat,                  // splat
-    trTeleport,               // 2-way teleporter - unused
-    trTeleport,               // single teleporter - unused
-    trZombie,                 // background
-    trTrap,                   // once trap
-    trZombie,                 // background image - unused
+    trUpdraft,                // Updraft
+    trFlipper,                // Flipper
+    trSlowfreeze,             // Slowfreeze
+    trZombie,                 // Hatch
+    trAnim,                   // Triggered animation
+    trZombie,                 // Hint // Bookmark - is this used?
+    trNoSplat,                // No-splat
+    trSplat,                  // Splat
+    trTeleport,               // 2-way teleporter - unused // Bookmark - can this be removed?
+    trTeleport,               // Single teleporter - unused // Bookmark - can this be removed?
+    trZombie,                 // Background
+    trTrap,                   // Once trap
+    trZombie,                 // Background image - unused
     trOWUp,                   // OWW up
-    trZombie,                 // paint
-    trAnim,                   // once animation
-    trBlasticine,             // lems become instabombers on contact
-    trVinewater,              // triggers vinetrapper instead of drowner
-    trPoison                  // turns lems into zombies
+    trZombie,                 // Paint // Bookmark - is this used?
+    trAnim,                   // Once animation
+    trBlasticine,             // Lems become instabombers on contact
+    trVinewater,              // Triggers vinetrapper instead of drowner
+    trPoison                  // Turns lems into zombies
   );
 
 type

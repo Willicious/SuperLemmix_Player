@@ -3,7 +3,7 @@ unit FSuperLemmixLevelSelect;
 interface
 
 uses
-  GameControl,
+  GameControl, GameSound,
   LemNeoLevelPack,
   LemStrings,
   LemTypes,
@@ -15,7 +15,7 @@ uses
   Generics.Collections,
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Buttons,
   Dialogs, ComCtrls, StdCtrls, ExtCtrls, ImgList, StrUtils, UMisc, Math, UITypes,
-  ActiveX, ShlObj, ComObj, // for the shortcut creation
+  ActiveX, ShlObj, ComObj, // For the shortcut creation
   LemNeoParser, GR32_Image, System.ImageList;
 
 type
@@ -91,65 +91,66 @@ type
   end;
 
 const // Icon indexes
+  ICON_BLANK = -1;
+
   ICON_NORMAL_LEMMING = 0;
   ICON_ZOMBIE_LEMMING = 1;
   ICON_NEUTRAL_LEMMING = 2;
+  ICON_SAVE_REQUIREMENT = 3;
 
-  ICON_SAVE_REQUIREMENT = 34;
   ICON_RELEASE_RATE = 4;
-  ICON_RELEASE_RATE_LOCKED = 33;
-  ICON_TIME_LIMIT = 5;
+  ICON_RELEASE_RATE_LOCKED = 5;
+  ICON_TIME_LIMIT = 6;
+  ICON_TIMER = 7;
 
-  ICON_SKILLS: array[Low(TSkillPanelButton)..LAST_SKILL_BUTTON] of Integer = (
-    6, // Walker
-    7, // Jumper
-    8, // Shimmier
-    38, // Slider
-    9, // Climber
-    10, // Swimmer
-    11, // Floater
-    12, // Glider
-    13, // Disarmer
-    42, // Timebomber
-    14, // Bomber
-    15, // Freezer
-    16, // Blocker
-    17, // Platformer
-    18, // Builder
-    19, // Stacker
-    40, // Spearer
-    41, // Grenader
-    37, // Laserer
-    20, // Basher
-    21, // Fencer
-    22, // Miner
-    23, // Digger
-    24  // Cloner
-  );
-
-  ICON_BRONZE_TALISMAN = 25;
-  ICON_SILVER_TALISMAN = 26;
-  ICON_GOLD_TALISMAN = 27;
+  ICON_BRONZE_TALISMAN = 8;
+  ICON_SILVER_TALISMAN = 9;
+  ICON_GOLD_TALISMAN = 10;
+  ICON_RECORDS = 11;
 
   ICON_TALISMAN: array[tcBronze..tcGold] of Integer =
     ( ICON_BRONZE_TALISMAN, ICON_SILVER_TALISMAN, ICON_GOLD_TALISMAN );
+  ICON_TALISMAN_UNOBTAINED_OFFSET = 4;
+  ICON_WORLD_RECORDS = 15;
 
-  ICON_TALISMAN_UNOBTAINED_OFFSET = 3;
+  ICON_SELECTED_TALISMAN = 16;
+  ICON_MAX_SKILLS = 17;
+  ICON_MAX_SKILL_TYPES = 18;
+  // 19 is currently blank
 
-  ICON_SELECTED_TALISMAN = 31;
+  ICON_CLASSIC_MODE = 20;
+  ICON_NO_PAUSE = 21;
+  ICON_KILL_ZOMBIES = 22;
+  // 23 is currently blank
 
-  ICON_MAX_SKILLS = 32;
-  ICON_MAX_SKILL_TYPES = 3;
-
-  ICON_KILL_ZOMBIES = 43;
-  ICON_CLASSIC_MODE = 44;
-  ICON_NO_PAUSE = 45;
-
-  ICON_RECORDS = 35;
-  ICON_WORLD_RECORDS = 39;
-  ICON_TIMER = 36;
-
-  ICON_BLANK = -1;
+  ICON_SKILLS: array[Low(TSkillPanelButton)..LAST_SKILL_BUTTON] of Integer = (
+    24, // 0 Walker
+    25, // 1 Jumper
+    26, // 2 Shimmier
+    27, // 3 Ballooner
+    28, // 4 Slider
+    29, // 5 Climber
+    30, // 6 Swimmer
+    31, // 7 Floater
+    32, // 8 Glider
+    33, // 9 Disarmer
+    34, // 10 Timebomber
+    35, // 11 Bomber
+    36, // 12 Freezer
+    37, // 13 Blocker
+    38, // 14 Ladderer
+    39, // 15 Platformer
+    40, // 16 Builder
+    41, // 17 Stacker
+    42, // 18 Spearer
+    43, // 19 Grenader
+    44, // 20 Laserer
+    45, // 21 Basher
+    46, // 22 Fencer
+    47, // 23 Miner
+    48, // 24 Digger
+    51  // 25 Cloner
+  );
 
 implementation
 
@@ -271,9 +272,9 @@ begin
   aStylePath := AppPath + SFStyles + aStyle + '\levelinfo\';
   aPath := GameParams.CurrentLevel.Group.ParentBasePack.Path;
 
-  if FileExists(aStylePath + IconsImg) then //check styles folder first
+  if FileExists(aStylePath + IconsImg) then // Check styles folder first
     TPNGInterface.LoadPngFile(aStylePath + IconsImg, fIconBMP)
-  else if FileExists(GameParams.CurrentLevel.Group.FindFile(IconsImg)) then //then levelpack folder
+  else if FileExists(GameParams.CurrentLevel.Group.FindFile(IconsImg)) then // Then levelpack folder
     TPNGInterface.LoadPngFile(aPath + IconsImg, fIconBMP)
   else
     TPNGInterface.LoadPngFile(AppPath + SFGraphicsMenu + IconsImg, fIconBMP);
@@ -313,7 +314,7 @@ procedure TFLevelSelect.FormDestroy(Sender: TObject);
 begin
   fIconBMP.Free;
 
-  fTalismanButtons.OwnsObjects := false; // because TFLevelSelect itself will take care of any that remain
+  fTalismanButtons.OwnsObjects := false; // Because TFLevelSelect itself will take care of any that remain
   fTalismanButtons.Free;
 end;
 
@@ -351,7 +352,7 @@ var
 
   Dlg: TSaveDialog;
 
-  // Source: http://delphiexamples.com/others/createlnk.html
+  // Source: delphiexamples.com/others/createlnk.html
   procedure CreateLink(const PathObj, PathLink, Desc, Param: string);
   var
     IObject: IUnknown;
@@ -421,6 +422,7 @@ end;
 procedure TFLevelSelect.btnOKClick(Sender: TObject);
 begin
   WriteToParams;
+  if GameParams.MenuSounds then SoundManager.PlaySound(SFX_OK);
   ModalResult := mrOk;
 end;
 
@@ -431,7 +433,7 @@ var
   N: TTreeNode;
 begin
   N := tvLevelSelect.Selected;
-  if N = nil then Exit; // safeguard
+  if N = nil then Exit; // Safeguard
 
   Obj := TObject(N.Data);
 
@@ -441,8 +443,7 @@ begin
                   mtCustom, [mbYes, mbNo], 0, mbNo) = mrYes then
   begin
     L.ResetTalismans;
-    InitializeTreeview;
-    tvLevelSelectClick(tvLevelSelect);
+    SetInfo;
   end;
 end;
 
@@ -454,7 +455,7 @@ var
   N: TTreeNode;
 begin
   N := tvLevelSelect.Selected;
-  if N = nil then Exit; // safeguard
+  if N = nil then Exit; // Safeguard
 
   Obj := TObject(N.Data);
 
@@ -485,7 +486,7 @@ var
   GroupWord: String;
 begin
   N := tvLevelSelect.Selected;
-  if N = nil then Exit; // safeguard
+  if N = nil then Exit; // Safeguard
 
   Obj := TObject(N.Data);
 
@@ -524,7 +525,7 @@ begin
   SetInfo;
 end;
 
-//when treeview is active, pressing return loads the currently selected level
+// When treeview is active, pressing return loads the currently selected level
 procedure TFLevelSelect.tvLevelSelectKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
@@ -656,7 +657,7 @@ begin
 
     fInfoForm.Visible := false;
 
-    btnOk.Enabled := G.LevelCount > 0; // note: Levels.Count is not recursive; LevelCount is
+    btnOk.Enabled := G.LevelCount > 0; // N.B: Levels.Count is not recursive; LevelCount is
     btnResetTalismans.Enabled := false;
 
     ClearTalismanButtons;
@@ -1040,10 +1041,7 @@ begin
   end;
 end;
 
-//////////////////////
-// Advanced options //
-//////////////////////
-
+// --- Advanced options --- //
 procedure TFLevelSelect.SetAdvancedOptionsGroup;
 begin
     btnSaveImage.Caption := 'Save Level Images';

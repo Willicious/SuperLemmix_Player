@@ -14,7 +14,7 @@ uses
 
 type
   TSkillSet = set of TSkillPanelButton;
-  TSkillCounts = array[Low(TSkillPanelButton)..High(TSkillPanelButton)] of Integer; // non-skill buttons are just unused
+  TSkillCounts = array[Low(TSkillPanelButton)..High(TSkillPanelButton)] of Integer; // Non-skill buttons are just unused
 
   TLevelInfo = class
   private
@@ -165,7 +165,7 @@ implementation
 
 uses
   LemVersion,
-  Dialogs, Math; // for backwards compatibility
+  Dialogs, Math; // For backwards compatibility
 
 { TLevelInfo }
 
@@ -508,7 +508,7 @@ begin
     begin
       MoreThanTwoSkills := ProhibitedSkills > 2;
 
-      if MadeSkillRestrictionText then // at this point this would mean there WERE restricted skills
+      if MadeSkillRestrictionText then // At this point this would mean there WERE restricted skills
       begin
         ReqText := ReqText + ';';
         if aTalisman.TotalSkillLimit < 0 then
@@ -921,6 +921,7 @@ begin
   HandleSkill('walker', spbWalker);
   HandleSkill('jumper', spbJumper);
   HandleSkill('shimmier', spbShimmier);
+  HandleSkill('ballooner', spbBallooner);
   HandleSkill('slider', spbSlider);
   HandleSkill('climber', spbClimber);
   HandleSkill('swimmer', spbSwimmer);
@@ -931,6 +932,7 @@ begin
   HandleSkill('bomber', spbBomber);
   HandleSkill('freezer', spbFreezer);
   HandleSkill('blocker', spbBlocker);
+  HandleSkill('ladderer', spbLadderer);
   HandleSkill('platformer', spbPlatformer);
   HandleSkill('builder', spbBuilder);
   HandleSkill('stacker', spbStacker);
@@ -979,6 +981,7 @@ var
     if S = 'walker' then O.Skill := Integer(spbWalker);
     if S = 'jumper' then O.Skill := Integer(spbJumper);    
     if S = 'shimmier' then O.Skill := Integer(spbShimmier);
+    if S = 'ballooner' then O.Skill := Integer(spbBallooner);
     if S = 'slider' then O.Skill := Integer(spbSlider);
     if S = 'climber' then O.Skill := Integer(spbClimber);
     if S = 'swimmer' then O.Skill := Integer(spbSwimmer);
@@ -989,6 +992,7 @@ var
     if S = 'bomber' then O.Skill := Integer(spbBomber);
     if S = 'freezer' then O.Skill := Integer(spbFreezer);
     if S = 'blocker' then O.Skill := Integer(spbBlocker);
+    if S = 'ladderer' then O.Skill := Integer(spbLadderer);
     if S = 'platformer' then O.Skill := Integer(spbPlatformer);
     if S = 'builder' then O.Skill := Integer(spbBuilder);
     if S = 'stacker' then O.Skill := Integer(spbStacker);
@@ -1013,6 +1017,11 @@ var
       Flag(odf_FlipLem)
     else if LeftStr(Lowercase(aSection.LineTrimString['direction']), 1) = 'r' then
       O.DrawingFlags := O.DrawingFlags and not odf_FlipLem;
+  end;
+
+  procedure GetRadiationSlowfreezeData;
+  begin
+    O.CountdownLength := aSection.LineNumeric['countdown'];
   end;
 
   procedure GetWindowData;
@@ -1094,6 +1103,7 @@ begin
     DOM_WINDOW: GetWindowData;
     DOM_BACKGROUND: GetMovingBackgroundData;
     DOM_EXIT, DOM_LOCKEXIT: GetExitData;
+    DOM_SLOWFREEZE, DOM_RADIATION: GetRadiationSlowfreezeData;
   end;
 
   if MO.TriggerEffect in NO_FLIP_HORIZONTAL_TYPES then O.DrawingFlags := O.DrawingFlags and not odf_FlipLem;
@@ -1144,16 +1154,17 @@ begin
     L.Dx := 1; // We use right as a "default", but we're also lenient - we accept just an L rather than the full word "left".
                // Side effects may include a left-facing lemming if user manually enters "DIRECTION LEMMING FACES IS RIGHT".
 
-  L.IsShimmier := (aSection.Line['shimmier'] <> nil);
-  L.IsSlider   := (aSection.Line['slider'] <> nil);
-  L.IsClimber  := (aSection.Line['climber']  <> nil);
-  L.IsSwimmer  := (aSection.Line['swimmer']  <> nil);
-  L.IsFloater  := (aSection.Line['floater']  <> nil);
-  L.IsGlider   := (aSection.Line['glider']   <> nil);
-  L.IsDisarmer := (aSection.Line['disarmer'] <> nil);
-  L.IsZombie   := (aSection.Line['zombie']   <> nil);
-  L.IsNeutral  := (aSection.Line['neutral']  <> nil);
-  L.IsBlocker  := (aSection.Line['blocker']  <> nil);
+  L.IsBallooner    := (aSection.Line['ballooner'] <> nil);
+  L.IsShimmier     := (aSection.Line['shimmier'] <> nil);
+  L.IsSlider       := (aSection.Line['slider'] <> nil);
+  L.IsClimber      := (aSection.Line['climber']  <> nil);
+  L.IsSwimmer      := (aSection.Line['swimmer']  <> nil);
+  L.IsFloater      := (aSection.Line['floater']  <> nil);
+  L.IsGlider       := (aSection.Line['glider']   <> nil);
+  L.IsDisarmer     := (aSection.Line['disarmer'] <> nil);
+  L.IsZombie       := (aSection.Line['zombie']   <> nil);
+  L.IsNeutral      := (aSection.Line['neutral']  <> nil);
+  L.IsBlocker      := (aSection.Line['blocker']  <> nil);
 end;
 
 procedure TLevel.HandleTalismanEntry(aSection: TParserSection; const aIteration: Integer);
@@ -1264,7 +1275,7 @@ var
 begin
   for i := 0 to InteractiveObjects.Count-1 do
     if InteractiveObjects[i].Identifier = 'default:fallback' then
-      Exit; // safer not to do this with fallbacks in play
+      Exit; // Safer not to do this with fallbacks in play
 
   // 1. Validate skillset - remove skills that don't exist in the level, and forbid infinite cloners
   for S := Low(TSkillPanelButton) to LAST_SKILL_BUTTON do
@@ -1324,7 +1335,7 @@ begin
 
       if (n = -1) then
       begin
-        Info.LemmingsCount := SpawnedCount; // remember - this already includes preplaced lemmings
+        Info.LemmingsCount := SpawnedCount; // Remember - this already includes preplaced lemmings
         Break;
       end;
 
@@ -1340,7 +1351,7 @@ begin
       Inc(SpawnedCount);
     end;
 
-    SetLength(Info.SpawnOrder, Info.LemmingsCount - PreplacedLemmings.Count); // in case this got overridden
+    SetLength(Info.SpawnOrder, Info.LemmingsCount - PreplacedLemmings.Count); // In case this got overridden
   end;
 
   // 3. Validate save requirement and lower it if need be. It must:
@@ -1484,6 +1495,7 @@ begin
   HandleSkill('WALKER', spbWalker);
   HandleSkill('JUMPER', spbJumper);
   HandleSkill('SHIMMIER', spbShimmier);
+  HandleSkill('BALLOONER', spbBallooner);
   HandleSkill('SLIDER', spbSlider);
   HandleSkill('CLIMBER', spbClimber);
   HandleSkill('SWIMMER', spbSwimmer);
@@ -1494,6 +1506,7 @@ begin
   HandleSkill('BOMBER', spbBomber);
   HandleSkill('Freezer', spbFreezer);
   HandleSkill('BLOCKER', spbBlocker);
+  HandleSkill('LADDERER', spbLadderer);
   HandleSkill('PLATFORMER', spbPlatformer);
   HandleSkill('BUILDER', spbBuilder);
   HandleSkill('STACKER', spbStacker);
@@ -1537,16 +1550,18 @@ var
      spbWalker: s := 'WALKER';
      spbJumper: s := 'JUMPER';
      spbShimmier: s := 'SHIMMIER';
+     spbBallooner: s := 'BALLOONER';
+     spbSwimmer: s := 'SWIMMER';
      spbSlider: s := 'SLIDER';
      spbClimber: s := 'CLIMBER';
-     spbSwimmer: s := 'SWIMMER';
      spbFloater: s := 'FLOATER';
      spbGlider: s := 'GLIDER';
      spbDisarmer: s := 'DISARMER';
      spbTimebomber: s := 'TIMEBOMBER';
      spbBomber: s := 'BOMBER';
-     spbFreezer: s := 'Freezer';
+     spbFreezer: s := 'FREEZER';
      spbBlocker: s := 'BLOCKER';
+     spbLadderer: s := 'LADDERER';
      spbPlatformer: s := 'PLATFORMER';
      spbBuilder: s := 'BUILDER';
      spbStacker: s := 'STACKER';
@@ -1696,6 +1711,7 @@ begin
     if L.Dx < 0 then
       Sec.AddLine('FLIP_HORIZONTAL');
 
+    if L.IsBallooner then Sec.AddLine('BALLOONER');
     if L.IsShimmier then Sec.AddLine('SHIMMIER');
     if L.IsSlider then Sec.AddLine('SLIDER');
     if L.IsClimber then Sec.AddLine('CLIMBER');

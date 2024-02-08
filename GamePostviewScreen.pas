@@ -27,7 +27,10 @@ type
   TGamePostviewScreen = class(TGameBaseMenuScreen)
     private
       fAdvanceLevel: Boolean;
+
       function GetPostviewText: TextLineArray;
+      procedure LoadPostviewTextColours;
+
       function GetResultIndex: Integer;
       procedure NextLevel;
       procedure ReplaySameLevel;
@@ -44,7 +47,14 @@ type
 
 implementation
 
-uses Forms;
+uses Forms, LemNeoParser;
+
+var
+  TopTextShift: Extended;      // 0.150; - Teal
+  RescueRecordShift: Extended; // 0.500; - Violet
+  CommentShift: Extended;      // 0.600; - Red
+  TimeRecordShift: Extended;   // 0.800; - Yellow
+  SkillsRecordShift: Extended; // 0;     - Green (default)
 
 { TDosGamePreview }
 
@@ -99,11 +109,11 @@ begin
   fClickableRegions.Clear;
   ScreenImg.BeginUpdate;
   try
-    // draw text
+    // Draw text
     Lines := GetPostviewText;
     MenuFont.DrawTextLines(Lines, ScreenImg.Bitmap, TEXT_Y_POSITION);
 
-    //MenuFont.DrawTextCentered(ScreenImg.Bitmap, GetScreenText, 16);
+    // MenuFont.DrawTextCentered(ScreenImg.Bitmap, GetScreenText, 16);
 
     if GameParams.GameResult.gSuccess then
     begin
@@ -171,8 +181,14 @@ procedure TGamePostviewScreen.ExitToMenu;
 begin
   if GameParams.TestModeLevel <> nil then
     CloseScreen(gstExit)
-  else
+  else begin
+    if GameParams.LastActiveLevel then
+      GameParams.NextUnsolvedLevel := False
+    else if GameParams.GameResult.gSuccess and GameParams.NextUnsolvedLevel then
+      GameParams.NextLevel(true);
+
     CloseScreen(gstMenu);
+  end;
 end;
 
 function TGamePostviewScreen.GetResultIndex: Integer;
@@ -187,7 +203,7 @@ var
       begin
         with GameParams.GameResult do
         begin
-          NewMin := $7FFFFFFF; // avoid compiler warning
+          NewMin := $7FFFFFFF; // Avoid compiler warning
           case aText.ConditionType of
             pvc_Absolute: NewMin := aText.ConditionValue;
             pvc_Percent: NewMin := AdjLemCount * aText.ConditionValue div 100;
@@ -225,12 +241,6 @@ end;
 
 function TGamePostviewScreen.GetPostviewText: TextLineArray;
 const
-  TOP_TEXT_SHIFT = 0.150;      //teal
-  RESCUE_RESULT_SHIFT = 0.500; //violet
-  COMMENT_SHIFT = 0.600;       //red
-  TIME_RECORD_SHIFT = 0.800;   //yellow
-  SKILLS_RECORD_SHIFT = 0;     //green (default)
-
   LINE_Y_SPACING = 28;
 
 var
@@ -267,6 +277,8 @@ begin
   Entry := GameParams.CurrentLevel;
   FillChar(HueShift, SizeOf(TColorDiff), 0);
   SetLength(Result, 9);
+  LoadPostviewTextColours;
+
   STarget := IntToStr(Results.gToRescue);
   SDone := IntToStr(Results.gRescued);
 
@@ -297,8 +309,8 @@ begin
     end;
   end;
 
-  //top text
-  HueShift.HShift := TOP_TEXT_SHIFT;
+  // Top text
+  HueShift.HShift := TopTextShift;
   if Results.gGotTalisman then
     Result[0].Line := STalismanUnlocked
   else if Results.gTimeIsUp then
@@ -308,29 +320,28 @@ begin
   Result[0].ColorShift := HueShift;
   Result[0].yPos := 0 + LINE_Y_SPACING;
 
-  //rescue result rescued
-  HueShift.HShift := RESCUE_RESULT_SHIFT;
+  // Rescue result rescued
+  HueShift.HShift := RescueRecordShift;
   Result[1].Line := SYouRescued + SDone;
   Result[1].yPos := Result[0].yPos + (LINE_Y_SPACING * 2);
   Result[1].ColorShift := HueShift;
 
-  //rescue result needed
+  // Rescue result needed
   Result[2].Line := SYouNeeded + STarget;
   Result[2].yPos := Result[1].yPos + LINE_Y_SPACING;
   Result[2].ColorShift := HueShift;
 
-  //rescue result record
-  if GameParams.TestModeLevel <> nil then
-    Result[3].Line := ''
-  else if Entry.UserRecords.LemmingsRescued.Value < 0 then
-    Result[3].Line := SYourRecord + '0'
+  // Rescue result record
+  if Results.gSuccess and (Entry.UserRecords.LemmingsRescued.Value > 0)
+  and (not Results.gToRescue <= 0) then
+    Result[3].Line := SYourRecord + IntToStr(GameParams.CurrentLevel.UserRecords.LemmingsRescued.Value)
   else
-    Result[3].Line := SYourRecord + IntToStr(GameParams.CurrentLevel.UserRecords.LemmingsRescued.Value);
+    Result[3].Line := '';
   Result[3].yPos := Result[2].yPos + LINE_Y_SPACING;
   Result[3].ColorShift := HueShift;
 
-  //comment - we allocate 2 lines for this
-  HueShift.HShift := COMMENT_SHIFT;
+  // Comment - we allocate 2 lines for this
+  HueShift.HShift := CommentShift;
   WhichText := Entry.Group.PostviewTexts[GetResultIndex];
   Result[4].Line := WhichText.Text[0];
   Result[5].Line := WhichText.Text[1];
@@ -339,31 +350,84 @@ begin
   Result[4].ColorShift := HueShift;
   Result[5].ColorShift := HueShift;
 
-  //time taken
-  HueShift.HShift := TIME_RECORD_SHIFT;
-  if Results.gSuccess then
+  // Time taken
+  HueShift.HShift := TimeRecordShift;
+  if (Results.gSuccess and not (Results.gToRescue <= 0))
+  or ((GameParams.TestModeLevel <> nil) and (Results.gRescued >= Results.gToRescue)) then
     Result[6].Line := SYourTime + MakeTimeString(Results.gLastRescueIteration)
   else
     Result[6].Line := '';
   Result[6].yPos := Result[5].yPos + (LINE_Y_SPACING * 2);
   Result[6].ColorShift := HueShift;
 
-  //time record
-  if (GameParams.TestModeLevel <> nil) or not (Results.gSuccess) then
-    Result[7].Line := ''
+  // Time record
+  if (Results.gSuccess and (Entry.UserRecords.TimeTaken.Value > 0))
+  and (not Results.gToRescue <= 0) then
+    Result[7].Line := SYourTimeRecord + MakeTimeString(Entry.UserRecords.TimeTaken.Value)
   else
-    Result[7].Line := SYourTimeRecord + MakeTimeString(Entry.UserRecords.TimeTaken.Value);
+    Result[7].Line := '';
   Result[7].yPos := Result[6].yPos + LINE_Y_SPACING;
   Result[7].ColorShift := HueShift;
 
-  //skills record
-  HueShift.HShift := SKILLS_RECORD_SHIFT;
-  if Results.gSuccess then
+  // Skills record
+  HueShift.HShift := SkillsRecordShift;
+  if Results.gSuccess and (Entry.UserRecords.TotalSkills.Value >= 0)
+  and (not Results.gToRescue <= 0) then
     Result[8].Line := SYourFewestSkills + IntToStr(Entry.UserRecords.TotalSkills.Value)
   else
     Result[8].Line := '';
   Result[8].yPos := Result[7].yPos + (LINE_Y_SPACING * 2);
   Result[8].ColorShift := HueShift;
+end;
+
+procedure TGamePostviewScreen.LoadPostviewTextColours;
+var
+  Parser: TParser;
+  Sec: TParserSection;
+  aPath: string;
+  aFile: string;
+
+  // Default SLX colours, loaded if custom files don't exist
+  procedure ResetColours;
+  begin
+    TopTextShift := 0.150;      // Teal
+    RescueRecordShift := 0.500; // Violet
+    CommentShift := 0.600;      // Red
+    TimeRecordShift := 0.800;   // Yellow
+    SkillsRecordShift := 0;     // Green (default)
+  end;
+
+begin
+  ResetColours;
+
+  aFile := 'textcolours.nxmi';
+  aPath := GameParams.CurrentLevel.Group.ParentBasePack.Path;
+
+  if aPath = '' then
+  aPath := AppPath + SFLevels;
+
+  if (GameParams.CurrentLevel = nil)
+    or not (FileExists(aPath + aFile) or FileExists(AppPath + SFData + aFile))
+      then Exit;
+
+  Parser := TParser.Create;
+  try
+    if FileExists(aPath + aFile) then
+      Parser.LoadFromFile(aPath + aFile)
+    else if FileExists(AppPath + SFData + aFile) then
+      Parser.LoadFromFile(AppPath + SFData + aFile);
+
+    Sec := Parser.MainSection.Section['postview'];
+    if Sec = nil then Exit;
+
+    TopTextShift := StrToFloatDef(Sec.LineString['top_text'], 0.150);
+    RescueRecordShift := StrToFloatDef(Sec.LineString['rescue_record'], 0.500);
+    CommentShift := StrToFloatDef(Sec.LineString['comment'], 0.600);
+    TimeRecordShift := StrToFloatDef(Sec.LineString['time_record'], 0.800);
+    SkillsRecordShift := StrToFloatDef(Sec.LineString['skills_record'], 0);
+  finally
+    Parser.Free;
+  end;
 end;
 
 procedure TGamePostviewScreen.DoAfterConfig;

@@ -1,7 +1,6 @@
 unit GameSound;
 
-// Entire rewrite, as this is more efficient (or at least less tedious) than tidying up
-// the existing unit.
+// Entire rewrite, as this is more efficient (or at least less tedious) than tidying up the existing unit.
 
 
 // To load a sound:
@@ -24,16 +23,17 @@ unit GameSound;
 //   SoundManager.PlayMusic;
 //   SoundManager.StopMusic;
 //
-// This new sound manager will handle not loading music if music is muted. With that being said, it currently still loads the file
-// into memory, but doesn't load it into BASS. This is to simplify integration into backwards-compatible; and it can be changed to
-// not load the file at all once backwards-compatible is no longer a thing.
+{ This new sound manager will handle not loading music if music is muted.
+  With that being said, it currently still loads the file into memory, but doesn't load it into BASS.
+  This is to simplify integration into backwards-compatible; and it can be changed to
+  not load the file at all once backwards-compatible is no longer a thing. }
 
 interface
 
 uses
   Dialogs,
   Bass,
-  LemTypes, // only uses AppPath in new-formats but uses other stuff from LemTypes in backwards-compatible
+  LemTypes, // Only uses AppPath in new-formats but uses other stuff from LemTypes in backwards-compatible
   LemStrings, Contnrs, Classes, SysUtils;
 
 type
@@ -81,8 +81,6 @@ type
       fMusicStream: TMemoryStream;
       fMusicChannel: LongWord;
       fMusicPlaying: Boolean;
-      fMenuMusicPlaying: Boolean;
-      fLookingForCustomMenuMusicExt: Boolean;
 
       fIsBassLoaded: Boolean;
 
@@ -105,11 +103,9 @@ type
       procedure PurgeNonDefaultSounds;
       procedure PurgePackSounds;
 
-      procedure LoadMenuMusic;
       procedure LoadMusicFromFile(aName: String);
       procedure LoadMusicFromStream(aStream: TStream; aName: String);
 
-      procedure HandleMenuMusic;
       procedure PlaySound(aName: String; aBalance: Integer = 0; aFrequency: Single = 0); // -100 = fully left, +100 = fully right
       procedure PlayPackSound(aName: String; aLoadPath: String; aBalance: Integer = 0; aFrequency: Single = 0);
       procedure PlayMusic;
@@ -124,7 +120,6 @@ type
       property MusicVolume: Integer read fMusicVolume write SetMusicVolume;
       property MuteSound: Boolean read fMuteSound write fMuteSound;
       property MuteMusic: Boolean read fMuteMusic write SetMusicMute;
-      property MenuMusicPlaying: Boolean read fMenuMusicPlaying write fMenuMusicPlaying;
   end;
 
 var
@@ -145,7 +140,7 @@ const
                   '.mtm',
                   '.umx'
                   );
-  LAST_SOUND_EXT = '.mp3'; // anything beyond this entry can only be used for music, not sfx
+  LAST_SOUND_EXT = '.mp3'; // Anything beyond this entry can only be used for music, not sfx
 
 implementation
 
@@ -198,34 +193,18 @@ begin
   fMusicName := '';
 end;
 
-procedure TSoundManager.HandleMenuMusic;
-begin
-if GameParams.MenuMusic then
-  begin
-    if not MenuMusicPlaying then
-    begin
-      LoadMenuMusic;
-      PlayMusic;
-      fMenuMusicPlaying := True;
-    end;
-  end else begin
-    StopMusic;
-    fMenuMusicPlaying := False;
-  end;
-end;
-
 procedure TSoundManager.ObtainMusicBassChannel;
 begin
   if not fIsBassLoaded then Exit;
 
   Assert(fMusicChannel = $FFFFFFFF, 'TSoundManager.ObtainMusicBassChannel: A channel already exists!');
   fMusicChannel := BASS_StreamCreateFile(true, fMusicStream.Memory, 0, fMusicStream.Size, BASS_SAMPLE_LOOP);
-  if fMusicChannel = 0 then // this means we have a module-based file
+  if fMusicChannel = 0 then // This means we have a module-based file
   begin
     fMusicChannel := BASS_MusicLoad(true, fMusicStream.Memory, 0, fMusicStream.Size, BASS_SAMPLE_LOOP, 0);
     BASS_ChannelSetAttribute(fMusicChannel, BASS_ATTRIB_MUSIC_AMPLIFY, fMusicVolume / 2);
   end else begin
-    BASS_LoadLoopData(fMusicChannel); // yay, this was added to the BASS unit rather than GameSound
+    BASS_LoadLoopData(fMusicChannel); // Yay, this was added to the BASS unit rather than GameSound
     BASS_ChannelSetAttribute(fMusicChannel, BASS_ATTRIB_VOL, (fMusicVolume / 100));
   end;
 end;
@@ -266,10 +245,7 @@ var
 begin
   if aIsMusic then
   begin
-    if fLookingForCustomMenuMusicExt then
-      BasePath := GameParams.CurrentLevel.Group.ParentBasePack.Path
-    else
-      BasePath := AppPath + SFMusic;
+    BasePath := AppPath + SFMusic;
   end else
     BasePath := AppPath + SFSounds;
 
@@ -425,45 +401,6 @@ begin
       fSoundEffects.Delete(i);
 end;
 
-procedure TSoundManager.LoadMenuMusic;
-var
-  aName: String;
-  aPath: String;
-  F: TFileStream;
-  Ext: String;
-
-  procedure GetExtension;
-  begin
-    Ext := FindExtension(aName, true);
-    if Ext = '' then
-    begin
-      FreeMusic;
-      Exit;
-    end;
-  end;
-begin
-  if not fIsBassLoaded then Exit;
-
-  aName := 'menu';
-  aPath := GameParams.CurrentLevel.Group.ParentBasePack.Path;
-
-  if FileExists(GameParams.CurrentLevel.Group.FindFile(aName + Ext)) then
-  begin
-    fLookingForCustomMenuMusicExt := True;
-    GetExtension;
-    F := TFileStream.Create(aPath + aName + Ext, fmOpenRead)
-  end else begin
-    fLookingForCustomMenuMusicExt := False;
-    GetExtension;
-    F := TFileStream.Create(AppPath + SFMusic + aName + Ext, fmOpenRead);
-  end;
-  try
-    LoadMusicFromStream(F, aName);
-  finally
-    F.Free;
-  end;
-end;
-
 procedure TSoundManager.LoadMusicFromFile(aName: String);
 var
   F: TFileStream;
@@ -472,7 +409,7 @@ begin
   if not fIsBassLoaded then Exit;
 
   aName := Lowercase(aName);
-  if fMusicName = aName then Exit; // saves some time
+  if fMusicName = aName then Exit; // Saves some time
 
   Ext := FindExtension(aName, true);
   if Ext = '' then
@@ -494,7 +431,7 @@ begin
   if not fIsBassLoaded then Exit;
 
   aName := Lowercase(aName);
-  if fMusicName = aName then Exit; // saves some time
+  if fMusicName = aName then Exit; // Saves some time
 
   FreeMusic;
   fMusicStream.Clear;

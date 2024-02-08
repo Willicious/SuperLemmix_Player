@@ -6,7 +6,8 @@ $SPRITESET_RECOLORING
   LEMMING_BUILDER_SACK xF02020
   LEMMING_UMBRELLA xB0B000
   LEMMING_ZOMBIE_SKIN x97B590
-  LEMMING_ATHLETE_CLOTHES x00AF00
+  LEMMING_ATHLETE_HAIR x00B00B
+  LEMMING_ATHLETE_CLOTHES x202080
   LEMMING_NEUTRAL_CLOTHES x888888
   LEMMING_SELECTED_CLOTHES xEF2020
 $END
@@ -15,6 +16,11 @@ $STATE_RECOLORING
   $ATHLETE
     FROM x4040E0
     TO x202080
+  $END
+  
+  $ATHLETE
+    FROM x00B000
+    TO x00B00B
   $END
   
   $ZOMBIE
@@ -77,6 +83,34 @@ $ANIMATIONS
       FOOT_Y 10
     $END
   $END
+  
+  $ZOMBIEWALKER
+    FRAMES 16
+
+    $RIGHT
+      FOOT_X 8
+      FOOT_Y 10
+    $END
+
+    $LEFT
+      FOOT_X 9
+      FOOT_Y 10
+    $END
+  $END
+  
+  $DRIFTER
+    FRAMES 8
+
+    $RIGHT
+      FOOT_X 8
+      FOOT_Y 8
+    $END
+
+    $LEFT
+      FOOT_X 7
+      FOOT_Y 8
+    $END
+  $END
 
   $ASCENDER
     FRAMES 1
@@ -89,6 +123,20 @@ $ANIMATIONS
     $LEFT
       FOOT_X 9
       FOOT_Y 10
+    $END
+  $END
+  
+  $RUNNER
+    FRAMES 8
+
+    $RIGHT
+      FOOT_X 8
+      FOOT_Y 14
+    $END
+
+    $LEFT
+      FOOT_X 9
+      FOOT_Y 14
     $END
   $END
 
@@ -161,6 +209,20 @@ $ANIMATIONS
       FOOT_Y 13
     $END
   $END
+  
+  $LADDERER
+    FRAMES 25
+
+    $RIGHT
+      FOOT_X 5
+      FOOT_Y 14
+    $END
+
+    $LEFT
+      FOOT_X 26
+      FOOT_Y 14
+    $END
+  $END
 
   $BASHER
     FRAMES 32
@@ -216,6 +278,21 @@ $ANIMATIONS
     $LEFT
       FOOT_X 9
       FOOT_Y 16
+    $END
+  $END
+  
+  $BALLOONER
+    FRAMES 17
+    LOOP_TO_FRAME 10
+
+    $RIGHT
+      FOOT_X 7
+      FOOT_Y 30
+    $END
+
+    $LEFT
+      FOOT_X 8
+      FOOT_Y 30
     $END
   $END
 
@@ -605,12 +682,12 @@ $ANIMATIONS
 
     $RIGHT
       FOOT_X 5
-      FOOT_Y 13
+      FOOT_Y 11
     $END
 
     $LEFT
       FOOT_X 10
-      FOOT_Y 13
+      FOOT_Y 11
     $END
   $END
   

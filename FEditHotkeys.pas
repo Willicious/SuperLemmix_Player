@@ -23,7 +23,7 @@ type
     cbHoldKey: TCheckBox;
     cbSpecialSkip: TComboBox;
     lblSkip: TLabel;
-    btnAlternativeLayout: TBitBtn;
+    btnNeoLemmixLayout: TBitBtn;
     btnCancel: TBitBtn;
     btnReset: TBitBtn;
     procedure FormCreate(Sender: TObject);
@@ -42,7 +42,7 @@ type
     procedure cbSpecialSkipChange(Sender: TObject);
     procedure btnClassicLayoutClick(Sender: TObject);
     procedure btnAdvancedLayoutClick(Sender: TObject);
-    procedure btnAlternativeLayoutClick(Sender: TObject);
+    procedure btnNeoLemmixLayoutClick(Sender: TObject);
     procedure btnClearAllKeysClick(Sender: TObject);
     procedure btnResetClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
@@ -215,30 +215,32 @@ begin
       lka_Skill: begin
                    s := 'Select Skill: ';
                    case Hotkey.Modifier of
-                     Integer(spbWalker):     s := s + 'Walker';
-                     Integer(spbJumper):     s := s + 'Jumper';
-                     Integer(spbShimmier):   s := s + 'Shimmier';
-                     Integer(spbSlider):     s := s + 'Slider';
-                     Integer(spbClimber):    s := s + 'Climber';
-                     Integer(spbSwimmer):    s := s + 'Swimmer';
-                     Integer(spbFloater):    s := s + 'Floater';
-                     Integer(spbGlider):     s := s + 'Glider';
-                     Integer(spbDisarmer):   s := s + 'Disarmer';
-                     Integer(spbTimebomber): s := s + 'Timebomber';
-                     Integer(spbBomber):     s := s + 'Bomber';
-                     Integer(spbFreezer):    s := s + 'Freezer';
-                     Integer(spbBlocker):    s := s + 'Blocker';
-                     Integer(spbPlatformer): s := s + 'Platformer';
-                     Integer(spbBuilder):    s := s + 'Builder';
-                     Integer(spbStacker):    s := s + 'Stacker';
-                     Integer(spbSpearer):    s := s + 'Spearer';
-                     Integer(spbGrenader):   s := s + 'Grenader';
-                     Integer(spbLaserer):    s := s + 'Laserer';
-                     Integer(spbBasher):     s := s + 'Basher';
-                     Integer(spbFencer):     s := s + 'Fencer';
-                     Integer(spbMiner):      s := s + 'Miner';
-                     Integer(spbDigger):     s := s + 'Digger';
-                     Integer(spbCloner):     s := s + 'Cloner';
+                     Integer(spbWalker):       s := s + 'Walker';      // 0
+                     Integer(spbJumper):       s := s + 'Jumper';      // 1
+                     Integer(spbShimmier):     s := s + 'Shimmier';    // 2
+                     Integer(spbBallooner):    s := s + 'Ballooner';   // 3
+                     Integer(spbSlider):       s := s + 'Slider';      // 4
+                     Integer(spbClimber):      s := s + 'Climber';     // 5
+                     Integer(spbSwimmer):      s := s + 'Swimmer';     // 6
+                     Integer(spbFloater):      s := s + 'Floater';     // 7
+                     Integer(spbGlider):       s := s + 'Glider';      // 8
+                     Integer(spbDisarmer):     s := s + 'Disarmer';    // 9
+                     Integer(spbTimebomber):   s := s + 'Timebomber';  // 10
+                     Integer(spbBomber):       s := s + 'Bomber';      // 11
+                     Integer(spbFreezer):      s := s + 'Freezer';     // 12
+                     Integer(spbBlocker):      s := s + 'Blocker';     // 13
+                     Integer(spbLadderer):     s := s + 'Ladderer';    // 14
+                     Integer(spbPlatformer):   s := s + 'Platformer';  // 15
+                     Integer(spbBuilder):      s := s + 'Builder';     // 16
+                     Integer(spbStacker):      s := s + 'Stacker';     // 17
+                     Integer(spbSpearer):      s := s + 'Spearer';     // 18
+                     Integer(spbGrenader):     s := s + 'Grenader';    // 19
+                     Integer(spbLaserer):      s := s + 'Laserer';     // 20
+                     Integer(spbBasher):       s := s + 'Basher';      // 21
+                     Integer(spbFencer):       s := s + 'Fencer';      // 22
+                     Integer(spbMiner):        s := s + 'Miner';       // 23
+                     Integer(spbDigger):       s := s + 'Digger';      // 24
+                     Integer(spbCloner):       s := s + 'Cloner';      // 25
                      else s := s + '???';
                    end;
                  end;
@@ -296,19 +298,19 @@ end;
 
 procedure TFLemmixHotkeys.btnResetClick(Sender: TObject);
 begin
-  fHotkeys.LoadFile; //loads the previously saved hotkeys.ini file
+  fHotkeys.LoadFile; // Loads the previously saved hotkeys.ini file
   RefreshList;
 end;
 
 procedure TFLemmixHotkeys.btnSaveCloseClick(Sender: TObject);
 begin
-  fHotkeys.SaveFile; //saves current layout to hotkeys.ini
+  fHotkeys.SaveFile; // Saves current layout to hotkeys.ini
   Close;
 end;
 
 procedure TFLemmixHotkeys.btnCancelClick(Sender: TObject);
 begin
-  fHotkeys.LoadFile; //loads previous hotkeys.ini file to prevent saving changes
+  fHotkeys.LoadFile; // Loads previous hotkeys.ini file to prevent saving changes
   RefreshList;
   Close;
 end;
@@ -361,14 +363,14 @@ var
   i: Integer;
 begin
   i := FindKeyFromList(lvHotkeys.ItemIndex);
-  if i = -1 then Exit; //safety; should never happen
+  if i = -1 then Exit; // Safety; should never happen
   case TLemmixHotkeyAction(cbFunctions.ItemIndex) of
     lka_Skill: begin
                  if cbSkill.ItemIndex = -1 then cbSkill.ItemIndex := 0;
                  fHotkeys.SetKeyFunction(i, lka_Skill, cbSkill.ItemIndex);
                end;
     lka_Skip: begin
-                ebSkipDuration.Text := IntToStr(StrToIntDef(ebSkipDuration.Text, 0)); // not redundant; destroys non-numeric values
+                ebSkipDuration.Text := IntToStr(StrToIntDef(ebSkipDuration.Text, 0)); // Destroys non-numeric values
                 fHotkeys.SetKeyFunction(i, lka_Skip, StrToInt(ebSkipDuration.Text));
               end;
     lka_SpecialSkip: begin
@@ -391,7 +393,7 @@ var
   i: Integer;
 begin
   i := FindKeyFromList(lvHotkeys.ItemIndex);
-  if i = -1 then Exit; //safety; should never happen
+  if i = -1 then Exit; // Safety; should never happen
   if fHotkeys.CheckKeyEffect(i).Action <> lka_Skill then Exit;
   fHotkeys.SetKeyFunction(i, lka_Skill, cbSkill.ItemIndex);
   RefreshList;
@@ -403,7 +405,7 @@ var
   TextValue: Integer;
 begin
   i := FindKeyFromList(lvHotkeys.ItemIndex);
-  if i = -1 then Exit; //safety; should never happen
+  if i = -1 then Exit; // Safety; should never happen
   if fHotkeys.CheckKeyEffect(i).Action <> lka_Skip then Exit;
 
   if not TryStrToInt(ebSkipDuration.Text, TextValue) then
@@ -440,7 +442,7 @@ begin
   RefreshList;
 end;
 
-procedure TFLemmixHotkeys.btnAlternativeLayoutClick(Sender: TObject);
+procedure TFLemmixHotkeys.btnNeoLemmixLayoutClick(Sender: TObject);
 begin
   fHotkeys.ClearAllKeys;
   fHotkeys.SetDefaultsAlternative;
@@ -466,7 +468,7 @@ var
   i: Integer;
 begin
   i := FindKeyFromList(lvHotkeys.ItemIndex);
-  if i = -1 then Exit; //safety; should never happen
+  if i = -1 then Exit; // Safety; should never happen
 
   if not (fHotkeys.CheckKeyEffect(i).Action in [lka_ClearPhysics,
   lka_ShowUsedSkills]) then Exit;
@@ -483,7 +485,7 @@ var
   i: Integer;
 begin
   i := FindKeyFromList(lvHotkeys.ItemIndex);
-  if i = -1 then Exit; //safety; should never happen
+  if i = -1 then Exit; // Safety; should never happen
   if fHotkeys.CheckKeyEffect(i).Action <> lka_SpecialSkip then Exit;
   fHotkeys.SetKeyFunction(i, lka_SpecialSkip, cbSpecialSkip.ItemIndex);
   RefreshList;

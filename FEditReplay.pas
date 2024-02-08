@@ -1,7 +1,7 @@
 unit FEditReplay;
 
-// known issue - clicking Cancel destroys all replay data (should just revert to
-//               the state of data before opening dialog)
+// Bookmark - Known issue - clicking Cancel destroys all replay data
+// (should just revert to the state of data before opening dialog) - check if this is is still an issue
 
 interface
 
@@ -70,30 +70,32 @@ var
     function GetSkillString(aSkill: TBasicLemmingAction): String;
     begin
       case aSkill of
-            baDigging:     Result := 'Digger';
-            baClimbing:    Result := 'Climber';
-            baBuilding:    Result := 'Builder';
-            baBashing:     Result := 'Basher';
-            baMining:      Result := 'Miner';
-            baFloating:    Result := 'Floater';
-            baBlocking:    Result := 'Blocker';
-            baTimebombing: Result := 'Timebomber';
-            baExploding:   Result := 'Bomber';
-            baToWalking:   Result := 'Walker';
-            baPlatforming: Result := 'Platformer';
-            baStacking:    Result := 'Stacker';
-            baFreezing:    Result := 'Freezer';
-            baSwimming:    Result := 'Swimmer';
-            baGliding:     Result := 'Glider';
-            baFixing:      Result := 'Disarmer';
-            baCloning:     Result := 'Cloner';
-            baFencing:     Result := 'Fencer';
-            baShimmying:   Result := 'Shimmier';
-            baJumping:     Result := 'Jumper';
-            baSliding:     Result := 'Slider';
-            baSpearing:    Result := 'Spearer';
-            baGrenading:   Result := 'Grenader';
-            baLasering:    Result := 'Laserer';
+            baToWalking:     Result := 'Walker';
+            baJumping:       Result := 'Jumper';
+            baShimmying:     Result := 'Shimmier';
+            baBallooning:    Result := 'Ballooner';
+            baSliding:       Result := 'Slider';
+            baClimbing:      Result := 'Climber';
+            baSwimming:      Result := 'Swimmer';
+            baFloating:      Result := 'Floater';
+            baGliding:       Result := 'Glider';
+            baFixing:        Result := 'Disarmer';
+            baTimebombing:   Result := 'Timebomber';
+            baExploding:     Result := 'Bomber';
+            baFreezing:      Result := 'Freezer';
+            baBlocking:      Result := 'Blocker';
+            baLaddering:     Result := 'Ladderer';
+            baPlatforming:   Result := 'Platformer';
+            baBuilding:      Result := 'Builder';
+            baStacking:      Result := 'Stacker';
+            baSpearing:      Result := 'Spearer';
+            baGrenading:     Result := 'Grenader';
+            baLasering:      Result := 'Laserer';
+            baBashing:       Result := 'Basher';
+            baFencing:       Result := 'Fencer';
+            baMining:        Result := 'Miner';
+            baDigging:       Result := 'Digger';
+            baCloning:       Result := 'Cloner';
         else Result := '(Invalid skill)';
       end;
     end;
@@ -265,7 +267,7 @@ begin
 
   if lbReplayActions.ItemIndex = -1 then Exit;
   I := TBaseReplayItem(lbReplayActions.Items.Objects[lbReplayActions.ItemIndex]);
-  if I = nil then Exit; // just in case  
+  if I = nil then Exit;
 
   NoteChangeAtFrame(I.Frame);
   if I is TReplayChangeSpawnInterval then

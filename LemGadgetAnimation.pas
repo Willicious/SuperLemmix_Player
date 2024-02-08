@@ -435,26 +435,26 @@ var
   procedure LoadGrenadeImages;
   var
   CustomStyle: String;
-  CustomGrenadeImages: String;
-  HRCustomGrenadeImages: String;
+  CustomStylePath, DefaultStylePath: String;
+  Grenades, GrenadesHR: String;
   begin
-    CustomStyle := GameParams.Level.Info.GraphicSetName;
+    CustomStyle := GameParams.Renderer.Theme.Lemmings;
+    CustomStylePath := AppPath + SFStyles + CustomStyle + SFPiecesEffects;
+    DefaultStylePath := AppPath + SFStyles + SFDefaultStyle + SFPiecesEffects;
+    Grenades := 'grenades.png';
+    GrenadesHR := 'grenades-hr.png';
 
-    CustomGrenadeImages := AppPath + SFStyles + CustomStyle + SFPiecesGrenades + 'grenades.png';
-    HRCustomGrenadeImages := AppPath + SFStyles + CustomStyle + SFPiecesGrenades + 'grenades-hr.png';
-
-    if (FileExists(CustomGrenadeImages) and FileExists(HRCustomGrenadeImages)) then
+    if (FileExists(CustomStylePath + Grenades) and FileExists(CustomStylePath + GrenadesHR)) then
     begin
       if GameParams.HighResolution then
-        TPngInterface.LoadPngFile(HRCustomGrenadeImages, NewBmp)
+        TPngInterface.LoadPngFile(CustomStylePath + GrenadesHR, NewBmp)
       else
-        TPngInterface.LoadPngFile(CustomGrenadeImages, NewBmp);
+        TPngInterface.LoadPngFile(CustomStylePath + Grenades, NewBmp);
     end else
-
     if GameParams.HighResolution then
-      TPngInterface.LoadPngFile(AppPath + SFStyles + SFDefaultStyle + SFPiecesGrenades + 'grenades-hr.png', NewBmp)
+      TPngInterface.LoadPngFile(DefaultStylePath + GrenadesHR, NewBmp)
     else
-      TPngInterface.LoadPngFile(AppPath + SFStyles + SFDefaultStyle + SFPiecesGrenades + 'grenades.png', NewBmp);
+      TPngInterface.LoadPngFile(DefaultStylePath + Grenades, NewBmp);
   end;
 
   procedure LoadSpearImages;
@@ -474,9 +474,9 @@ begin
   if BrickColor = aTheme.Colors['MASK'] or $FF000000 then
     BrickColor := $FFFFFFFF;
 
-  ////////////////////////////////////////////////////////////
-  ///  This code is mostly copied from GameBaseSkillPanel. ///
-  ////////////////////////////////////////////////////////////
+  // ----------------------------------------------------------- //
+  // ---  This code is mostly copied from GameBaseSkillPanel.--- //
+  // ----------------------------------------------------------- //
 
   SkillIcons := TBitmaps.Create;
 
@@ -488,10 +488,11 @@ begin
     SkillIcons.Add(NewBmp);
   end;
 
-  // Walker, Jumper, Shimmier, Slider, Climber, Swimmer, Floater, Glider, Disarmer - all simple
+  // Walker, Jumper, Shimmier, Ballooner, Slider, Climber, Swimmer, Floater, Glider, Disarmer - all simple
   DrawAnimationFrame(SkillIcons[Integer(spbWalker)], WALKING, 1, PICKUP_MID, PICKUP_BASELINE - 1);
   DrawAnimationFrame(SkillIcons[Integer(spbJumper)], JUMPING, 0, PICKUP_MID, PICKUP_BASELINE - 3);
   DrawAnimationFrame(SkillIcons[Integer(spbShimmier)], SHIMMYING, 1, PICKUP_MID, PICKUP_BASELINE - 4);
+  DrawAnimationFrame(SkillIcons[Integer(spbBallooner)], BALLOONING, 4, PICKUP_MID + 1, PICKUP_BASELINE - 2);
   DrawAnimationFrame(SkillIcons[Integer(spbSlider)], SLIDING_RTL, 0, PICKUP_MID - 2, PICKUP_BASELINE - 2);
   DrawAnimationFrame(SkillIcons[Integer(spbClimber)], CLIMBING, 3, PICKUP_MID + 3, PICKUP_BASELINE - 1);
   DrawAnimationFrame(SkillIcons[Integer(spbSwimmer)], SWIMMING, 2, PICKUP_MID + 1, PICKUP_BASELINE - 6);
@@ -500,33 +501,16 @@ begin
   DrawAnimationFrame(SkillIcons[Integer(spbDisarmer)], FIXING, 6, PICKUP_MID - 2, PICKUP_BASELINE - 3);
 
   // Bomber, freezer and blocker are simple. Unlike the skill panel, we use the Ohnoer animation for timebomber and bomber here.
-  DrawAnimationFrame(SkillIcons[Integer(spbTimebomber)], OHNOING, 7, PICKUP_MID, PICKUP_BASELINE - 3);  //bookmark - might use the timebomber-specific graphic for this one
+  DrawAnimationFrame(SkillIcons[Integer(spbTimebomber)], OHNOING, 7, PICKUP_MID, PICKUP_BASELINE - 3);  // Bookmark - might use the timebomber-specific graphic for this one
   DrawAnimationFrame(SkillIcons[Integer(spbBomber)], OHNOING, 7, PICKUP_MID, PICKUP_BASELINE - 3);
   DrawAnimationFrame(SkillIcons[Integer(spbFreezer)], ICECUBE, 0, PICKUP_MID + 1, PICKUP_BASELINE - 1);
   DrawAnimationFrame(SkillIcons[Integer(spbBlocker)], BLOCKING, 0, PICKUP_MID, PICKUP_BASELINE - 1);
 
-  // Platformer, Builder and Stacker have bricks drawn to clarify the direction of building.
-  // Platformer additionally has some extra black pixels drawn in to make the outline nicer.
-  DrawAnimationFrame(SkillIcons[Integer(spbPlatformer)], PLATFORMING, 1, PICKUP_MID, PICKUP_BASELINE - 4);
-  DrawBrick(SkillIcons[Integer(spbPlatformer)], PICKUP_MID - 5, PICKUP_BASELINE - 4);
-  DrawBrick(SkillIcons[Integer(spbPlatformer)], PICKUP_MID - 3, PICKUP_BASELINE - 4);
-  DrawBrick(SkillIcons[Integer(spbPlatformer)], PICKUP_MID - 1, PICKUP_BASELINE - 4);
-  DrawBrick(SkillIcons[Integer(spbPlatformer)], PICKUP_MID + 1, PICKUP_BASELINE - 4);
-  DrawBrick(SkillIcons[Integer(spbPlatformer)], PICKUP_MID + 3, PICKUP_BASELINE - 4);
-
-  DrawAnimationFrame(SkillIcons[Integer(spbBuilder)], BRICKLAYING, 1, PICKUP_MID, PICKUP_BASELINE - 3);
-  DrawBrick(SkillIcons[Integer(spbBuilder)], PICKUP_MID - 3, PICKUP_BASELINE - 2);
-  DrawBrick(SkillIcons[Integer(spbBuilder)], PICKUP_MID - 1, PICKUP_BASELINE - 3);
-  DrawBrick(SkillIcons[Integer(spbBuilder)], PICKUP_MID + 1, PICKUP_BASELINE - 4);
-  DrawBrick(SkillIcons[Integer(spbBuilder)], PICKUP_MID + 3, PICKUP_BASELINE - 5);
-
-  DrawAnimationFrame(SkillIcons[Integer(spbStacker)], STACKING, 0, PICKUP_MID, PICKUP_BASELINE - 2);
-  DrawBrick(SkillIcons[Integer(spbStacker)], PICKUP_MID + 2, PICKUP_BASELINE - 2);
-  DrawBrick(SkillIcons[Integer(spbStacker)], PICKUP_MID + 2, PICKUP_BASELINE - 3);
-  DrawBrick(SkillIcons[Integer(spbStacker)], PICKUP_MID + 2, PICKUP_BASELINE - 4);
-  DrawBrick(SkillIcons[Integer(spbStacker)], PICKUP_MID + 2, PICKUP_BASELINE - 5);
-  DrawBrick(SkillIcons[Integer(spbStacker)], PICKUP_MID + 2, PICKUP_BASELINE - 6);
-  DrawBrick(SkillIcons[Integer(spbStacker)], PICKUP_MID + 2, PICKUP_BASELINE - 7);
+  // Ladderer, Platformer, Builder and Stacker are identifiable by their bag colours
+  DrawAnimationFrame(SkillIcons[Integer(spbLadderer)], LADDERING, 0, PICKUP_MID, PICKUP_BASELINE - 3);
+  DrawAnimationFrame(SkillIcons[Integer(spbPlatformer)], PLATFORMING, 0, PICKUP_MID, PICKUP_BASELINE - 4);
+  DrawAnimationFrame(SkillIcons[Integer(spbBuilder)], BRICKLAYING, 0, PICKUP_MID, PICKUP_BASELINE - 3);
+  DrawAnimationFrame(SkillIcons[Integer(spbStacker)], STACKING, 0, PICKUP_MID, PICKUP_BASELINE - 3);
 
   // Projectiles need to be loaded separately
   NewBmp := TBitmap32.Create;
@@ -621,7 +605,7 @@ begin
       LoadPath := AppPath + SFStyles + aCollection + SFPiecesObjects + aPiece;
 
     if fName <> '' then
-      LoadPath := LoadPath + '_' + fName; // for backwards-compatible or simply unnamed primaries
+      LoadPath := LoadPath + '_' + fName; // For backwards-compatible or simply unnamed primaries
     LoadPath := LoadPath + '.png';
 
     if GameParams.HighResolution and not FileExists(LoadPath) then
@@ -629,7 +613,7 @@ begin
       LoadPath := AppPath + SFStyles + aCollection + SFPiecesObjects + aPiece;
 
       if fName <> '' then
-        LoadPath := LoadPath + '_' + fName; // for backwards-compatible or simply unnamed primaries
+        LoadPath := LoadPath + '_' + fName; // For backwards-compatible or simply unnamed primaries
       LoadPath := LoadPath + '.png';
 
       NeedUpscale := true;
@@ -673,8 +657,7 @@ begin
       fSourceImage.SetSize(fWidth * ResMod, fHeight * ResMod * fFrameCount);
       fSourceImage.Clear(0);
     end else begin
-      // Fallback behaviour. This may mean it's unrecognized, but it could also just
-      // mean that it's handled elsewhere (eg. "*PICKUP").
+      // Fallback behaviour. Could mean it's unrecognized, or handled elsewhere (eg. "*PICKUP").
       fSourceImage.SetSize(ResMod, ResMod);
       fSourceImage.Clear(0);
       fFrameCount := 1;
@@ -683,8 +666,7 @@ begin
     end;
   end;
 
-  // fPrimary is only set by TGadgetAnimations
-
+  // Only set fPrimary by TGadgetAnimations
   if fPrimary and (aSegment.Line['z_index'] = nil) then
     fZIndex := 1
   else
@@ -737,9 +719,9 @@ begin
 
   if fPrimary then
   begin
-    // Some properties are overridden / hardcoded for primary
-    BaseTrigger.fState := gasPause; // physics control the current frame
-    BaseTrigger.fVisible := true;   // never hide the primary - if it's needed as an effect, make the graphic blank
+    // Some properties are overridden/hardcoded for primary
+    BaseTrigger.fState := gasPause; // Physics control the current frame
+    BaseTrigger.fVisible := true;   // Never hide the primary - if it's needed as an effect, make the graphic blank
   end else begin
     // If NOT primary - load triggers
     aSegment.DoForEachSection('trigger',
@@ -770,7 +752,7 @@ begin
   fName := '';
   fColor := '';
 
-  // leave fPrimary unaffected
+  // Leave fPrimary unaffected
   fHorizontalStrip := false;
 
   fZIndex := 0;

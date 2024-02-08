@@ -3,7 +3,7 @@ unit FSuperLemmixConfig;
 interface
 
 uses
-  GameControl, GameSound, FEditHotkeys, FStyleManager, LemmixHotkeys, Math,
+  GameControl, GameSound, LemStrings, FEditHotkeys, FStyleManager, LemmixHotkeys, Math,
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, StdCtrls, Vcl.WinXCtrls, Vcl.ExtCtrls;
 
@@ -62,7 +62,8 @@ type
     cbTurboFF: TCheckBox;
     gbMenuSounds: TGroupBox;
     cbPostviewJingles: TCheckBox;
-    cbMenuMusic: TCheckBox;
+    rgGameLoading: TRadioGroup;
+    cbMenuSounds: TCheckBox;
     procedure btnApplyClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnHotkeysClick(Sender: TObject);
@@ -106,8 +107,8 @@ var
 implementation
 
 uses
-  GameBaseScreenCommon, // for EXTRA_ZOOM_LEVELS constant
-  GameMenuScreen; // for disabling the MassReplayCheck button if necessary.
+  GameBaseScreenCommon, // For EXTRA_ZOOM_LEVELS constant
+  GameMenuScreen; // For disabling the MassReplayCheck button if necessary.
 
 const
   PRESET_REPLAY_PATTERNS: array[0..6] of String =
@@ -220,22 +221,12 @@ end;
 procedure TFormNXConfig.btnApplyClick(Sender: TObject);
 begin
   SaveToParams;
-
-  // do this here so the effect is instant
-  if not GameParams.MenuMusic then
-  begin
-    SoundManager.StopMusic;
-    SoundManager.MenuMusicPlaying := False;
-  end;
 end;
 
 procedure TFormNXConfig.btnOKClick(Sender: TObject);
 begin
   SaveToParams;
-
-  // do this here to mitigate sudden volume changes
-  SoundManager.HandleMenuMusic;
-
+  if GameParams.MenuSounds then SoundManager.PlaySound(SFX_OK);
   ModalResult := mrOK;
 end;
 
@@ -250,7 +241,7 @@ begin
   fIsSetting := true;
 
   try
-    //// Page 1 (Global Options) ////
+    // --- Page 1 (Global Options) --- //
 
     ebUserName.Text := GameParams.UserName;
 
@@ -263,7 +254,7 @@ begin
     //cbUpdateCheck.Checked := GameParams.CheckUpdates;
     //cbEnableOnline.Checked := GameParams.EnableOnline;
 
-    //// Page 2 (Interface Options) ////
+    // --- Page 2 (Interface Options) --- //
     // Checkboxes
     cbPauseAfterBackwards.Checked := GameParams.PauseAfterBackwardsSkip;
     cbNoAutoReplay.Checked := not GameParams.NoAutoReplayMode;
@@ -284,7 +275,7 @@ begin
     cbResetWindowSize.Checked := false;
     cbResetWindowPosition.Enabled := not GameParams.FullScreen;
     cbResetWindowPosition.Checked := false;
-    cbHighResolution.Checked := GameParams.HighResolution; // must be done before SetZoomDropdown
+    cbHighResolution.Checked := GameParams.HighResolution; // Must be done before SetZoomDropdown
     cbIncreaseZoom.Checked := GameParams.IncreaseZoom;
     cbLinearResampleMenu.Checked := GameParams.LinearResampleMenu;
     cbMinimapHighQuality.Checked := GameParams.MinimapHighQuality;
@@ -296,7 +287,7 @@ begin
     SetZoomDropdown;
     SetPanelZoomDropdown;
 
-    //// Page 3 (Audio Options) ////
+    // --- Page 3 (Audio Options) --- //
     if SoundManager.MuteSound then
       tbSoundVol.Position := 0
     else
@@ -308,7 +299,7 @@ begin
 
     cbDisableTestplayMusic.Checked := GameParams.DisableMusicInTestplay;
     cbPostviewJingles.Checked := GameParams.PostviewJingles;
-    cbMenuMusic.Checked := GameParams.MenuMusic;
+    cbMenuSounds.Checked := GameParams.MenuSounds;
 
     btnApply.Enabled := false;
   finally
@@ -319,7 +310,7 @@ end;
 procedure TFormNXConfig.SaveToParams;
 begin
 
-  //// Page 1 (Global Options) ////
+  // --- Page 1 (Global Options) --- //
 
   GameParams.UserName := ebUserName.Text;
 
@@ -329,10 +320,13 @@ begin
   GameParams.IngameSaveReplayPattern := GetReplayPattern(cbIngameSaveReplayPattern);
   GameParams.PostviewSaveReplayPattern := GetReplayPattern(cbPostviewSaveReplayPattern);
 
+  GameParams.NextUnsolvedLevel := rgGameLoading.ItemIndex = 0;
+  GameParams.LastActiveLevel := rgGameLoading.ItemIndex = 1;
+
   //GameParams.EnableOnline := cbEnableOnline.Checked;
   //GameParams.CheckUpdates := cbUpdateCheck.Checked;
 
-  //// Page 2 (Interface Options) ////
+  // --- Page 2 (Interface Options) --- //
   // Checkboxes
   GameParams.PauseAfterBackwardsSkip := cbPauseAfterBackwards.Checked;
   GameParams.NoAutoReplayMode := not cbNoAutoReplay.Checked;
@@ -364,7 +358,7 @@ begin
   GameParams.ZoomLevel := cbZoom.ItemIndex + 1;
   GameParams.PanelZoomLevel := cbPanelZoom.ItemIndex + 1;
 
-  //// Page 3 (Audio Options) ////
+  // --- Page 3 (Audio Options) --- //
   SoundManager.MuteSound := tbSoundVol.Position = 0;
   if tbSoundVol.Position <> 0 then
     SoundManager.SoundVolume := tbSoundVol.Position;
@@ -378,7 +372,7 @@ begin
   GameParams.PreferBoing := rgExitSound.ItemIndex = 1;
 
   GameParams.PostviewJingles := cbPostviewJingles.Checked;
-  GameParams.MenuMusic := cbMenuMusic.Checked;
+  GameParams.MenuSounds := cbMenuSounds.Checked;
 
   btnApply.Enabled := false;
 end;
@@ -430,7 +424,7 @@ begin
         NewPanelZoom := cbZoom.ItemIndex * 2 + 1;
       end;
 
-      //if going from {low res, 3x panel zoom w/minimap} to hi-res, we need to reset window
+      // If going from {low res, 3x panel zoom w/minimap} to hi-res, we need to reset window
       if cbShowMinimap.Checked and not GameParams.FullScreen then
       begin
         cbResetWindowPosition.Checked := True;
@@ -503,12 +497,12 @@ end;
   //btnApply.Enabled := true;
 //end;
 
-//----------Classic Mode-------------------------------------------------------
+// --- Classic Mode --- //
 procedure TFormNXConfig.btnClassicModeClick(Sender: TObject);
 begin
   OptionChanged(Sender);
   cbClassicMode.Checked := true;
-  cbHideShadows.Checked := true; // or cbHideShadows.State = cbChecked;
+  cbHideShadows.Checked := true;
   cbHideClearPhysics.Checked := true;
   cbHideAdvancedSelect.Checked := true;
   cbHideFrameskipping.Checked := true;
@@ -557,6 +551,9 @@ procedure TFormNXConfig.SetCheckboxes;
         cbMinimapHighQuality.Checked := False;
         cbMinimapHighQuality.Enabled := False;
       end;
+
+    if GameParams.NextUnsolvedLevel then rgGameLoading.ItemIndex := 0;
+    if GameParams.LastActiveLevel then rgGameLoading.ItemIndex := 1;
 
     if GameParams.PreferYippee then rgExitSound.ItemIndex := 0;
     if GameParams.PreferBoing then rgExitSound.ItemIndex := 1;

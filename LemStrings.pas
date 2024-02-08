@@ -17,8 +17,6 @@ const
     SFGraphicsMenu = SFGraphics + 'menu\';
     SFGraphicsPanel = SFGraphics + 'panel\';
     SFGraphicsPanelHighRes = SFGraphics + 'panel-hr\';
-    //SFVisualSFX = SFGraphics + 'visualsfx\';
-    //SFVisualSFXHighRes = SFGraphics + 'visualsfx-hr\';
 
   SFStyles = 'styles\';
       SFDefaultStyle = 'default';
@@ -30,7 +28,7 @@ const
       SFPiecesBackgroundsHighRes = '\backgrounds-hr\';
       SFPiecesLemmings = '\lemmings\';
       SFPiecesLemmingsHighRes = '\lemmings-hr\';
-      SFPiecesGrenades = '\grenades\';
+      SFPiecesEffects = '\effects\';
       SFTheme = 'theme.nxtm';
 
   SFLevels = 'levels\';
@@ -69,10 +67,23 @@ const
   SFX_FALLOUT = 'die';
   SFX_FIXING = 'wrench';
   SFX_ZOMBIE = 'zombie';
+  SFX_ZOMBIE_OHNO = 'zombieohno';
   SFX_ZOMBIE_DIE = 'zombiedie';
+  SFX_ZOMBIE_SPLAT = 'zombiesplat';
+  SFX_ZOMBIE_PICKUP = 'zombiepickup';
+  SFX_ZOMBIE_LAUGH = 'zombielaugh';
+  SFX_ZOMBIE_LOLZ = 'zombielolz';
+  SFX_ZOMBIE_EXIT = 'zombieyippee';
   SFX_TIMEUP = 'timeup';
+  SFX_SPEAR_THROW = 'throw';
+  SFX_GRENADE_THROW = 'grenade';
   SFX_SPEAR_HIT = 'spearhit';
   SFX_LASER = 'laser';
+  SFX_BALLOON_INFLATE = 'balloon';
+  SFX_BALLOON_POP = 'balloonpop';
+  SFX_JUMP = 'jump';
+  SFX_BYE = 'bye';
+  SFX_OK = 'OK';
 
 resourcestring
   SProgramName = 'SuperLemmix Player';
@@ -83,7 +94,7 @@ resourcestring
   {-------------------------------------------------------------------------------
     PreviewScreen
   -------------------------------------------------------------------------------}
-  //SPreviewLemmings = ' Lemmings'; //not currently used
+  //SPreviewLemmings = ' Lemmings'; // Bookmark - not currently used - remove?
   SPreviewSave = ' To Be Saved';
   SPreviewReleaseRate = 'Release Rate ';
   SPreviewSpawnInterval = 'Spawn Interval ';
@@ -120,6 +131,7 @@ resourcestring
   SShrugger = 'Shrugger';
   STimebomber = 'Timebomber';
   SExploder = 'Bomber';
+  SLadderer = 'Ladderer';
   SPlatformer = 'Platformer';
   SStacker = 'Stacker';
   SFreezer = 'Freezer';
@@ -141,6 +153,8 @@ resourcestring
   SZombie = 'Zombie';
   SNeutral = 'Neutral';
   SNeutralZombie = 'N-Zombie';
+  SBallooner = 'Ballooner';
+  SDrifter = 'Drifter';
   SSleeper = 'Sleeper';
 
 
@@ -151,7 +165,7 @@ resourcestring
     'Your time is up!';
 
   //SAllLemmingsAccountedFor =
-    //'All lemmings accounted for.'; //not currently used
+    //'All lemmings accounted for.'; // Bookmark - not currently used - remove?
 
   STalismanUnlocked =
     'You unlocked a talisman!';
@@ -173,52 +187,57 @@ resourcestring
   SOptionSaveReplay = 'Save replay';
 
 const
-  LemmingActionStrings: array[TBasicLemmingAction] of string = (    //needs to match TBasicLemmingAction in LemCore
-    SDummyString, //1
-    SWalker,      //2
-    SAscender,    //3
-    SDigger,      //4
-    SClimber,     //5
-    SDrowner,     //6
-    SHoister,     //7
-    SBuilder,     //8
-    SBasher,      //9
-    SMiner,       //10
-    SFaller,      //11
-    SFloater,     //12
-    SSplatter,    //13
-    SExiter,      //14
-    SVaporizer,   //15
-    SVinetrapper, //16
-    SBlocker,     //17
-    SShrugger,    //18
-    STimebomber,  //19
-    STimebomber,  //20
-    SExploder,    //21
-    SExploder,    //22
-    SDummyString, //23
-    SPlatformer,  //24
-    SStacker,     //25
-    SFreezer,     //26
-    SFreezer,     //27
-    SFreezer,     //28
-    SFreezer,     //29
-    SSwimmer,     //30
-    SGlider,      //31
-    SDisarmer,    //32
-    SCloner,      //33
-    SFencer,      //34
-    SReacher,     //35
-    SShimmier,    //36
-    SJumper,      //37
-    SDehoister,   //38
-    SSlider,      //39
-    SDangler,     //40
-    SSpearer,     //41
-    SGrenader,    //42
-    SLooker,      //43
-    SLaserer,     //44
-    SSleeper      //45
+  // Needs to match TBasicLemmingAction in LemCore
+  LemmingActionStrings: array[TBasicLemmingAction] of string = (
+    SDummyString, // 1
+    SWalker,      // 2
+    SDummyString, // 3
+    SAscender,    // 4
+    SDigger,      // 5
+    SClimber,     // 6
+    SDrowner,     // 7
+    SHoister,     // 8
+    SBuilder,     // 9
+    SBasher,      // 10
+    SMiner,       // 11
+    SFaller,      // 12
+    SFloater,     // 13
+    SSplatter,    // 14
+    SExiter,      // 15
+    SVaporizer,   // 16
+    SVinetrapper, // 17
+    SBlocker,     // 18
+    SShrugger,    // 19
+    STimebomber,  // 20
+    STimebomber,  // 21
+    SExploder,    // 22
+    SExploder,    // 23
+    SDummyString, // 24
+    SPlatformer,  // 25
+    SStacker,     // 26
+    SFreezer,     // 27
+    SFreezer,     // 28
+    SFreezer,     // 29
+    SFreezer,     // 30
+    SSwimmer,     // 31
+    SGlider,      // 32
+    SDisarmer,    // 33
+    SCloner,      // 34
+    SFencer,      // 35
+    SReacher,     // 36
+    SShimmier,    // 37
+    SJumper,      // 38
+    SDehoister,   // 39
+    SSlider,      // 40
+    SDangler,     // 41
+    SSpearer,     // 42
+    SGrenader,    // 43
+    SLooker,      // 44
+    SLaserer,     // 45
+    SBallooner,   // 46
+    SLadderer,    // 47
+    SDrifter,     // 48
+    SSleeper      // 49
   );
 
 implementation
